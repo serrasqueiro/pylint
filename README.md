@@ -16,3 +16,7 @@ Just do ``git remote add upstream https://github.com/PyCQA/pylint``
 to keep this repo syncronized with the original project from where this got
 forked from.
 
+To keep up with upstream (original) repo, do:
+* ``git merge upstream/master``
+* See also [github help](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork).
+
