@@ -40,6 +40,7 @@
 # Copyright (c) 2018 Yuval Langer <yuvallanger@mail.tau.ac.il>
 # Copyright (c) 2018 Nick Drozd <nicholasdrozd@gmail.com>
 # Copyright (c) 2018 kapsh <kapsh@kap.sh>
+# Copyright (c) 2020 HMoreira <h@serrasqueiro.com>
 
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 # For details: https://github.com/PyCQA/pylint/blob/master/COPYING
@@ -86,6 +87,7 @@ from pylint.utils.pragma_parser import (
     UnRecognizedOptionError,
     parse_pragma,
 )
+from prized import PDebug
 
 try:
     import multiprocessing
@@ -539,6 +541,7 @@ class PyLinter(
         # some stuff has to be done before ancestors initialization...
         #
         # messages store / checkers / reporter / astroid manager
+        self.debug = PDebug(__name__, __class__.__name__)
         self.msgs_store = MessageDefinitionStore()
         self.reporter = None
         self._reporter_name = None
@@ -991,9 +994,10 @@ class PyLinter(
         The initialize() method should be called before calling this method
         """
         with self._astroid_module_checker() as check_astroid_module:
-            self._check_file(
+            is_ok = self._check_file(
                 self.get_ast, check_astroid_module, name, filepath, modname
             )
+        return is_ok
 
     def _check_files(self, get_ast, file_descrs):
         """Check all files from file_descrs
@@ -1024,7 +1028,7 @@ class PyLinter(
         # get the module representation
         ast_node = get_ast(filepath, name)
         if ast_node is None:
-            return
+            return False
 
         self._ignore_file = False
 
@@ -1039,6 +1043,7 @@ class PyLinter(
         )
         for msgid, line, args in spurious_messages:
             self.add_message(msgid, line, None, args)
+        return True
 
     @staticmethod
     def _get_file_descr_from_stdin(filepath):
@@ -1207,6 +1212,7 @@ class PyLinter(
             for checker in rawcheckers:
                 checker.process_module(ast_node)
             for checker in tokencheckers:
+                self.debug.echo("[DEBUG]", "Token checkers: ", checker.name)
                 checker.process_tokens(tokens)
         # generate events to astroid checkers
         walker.walk(ast_node)

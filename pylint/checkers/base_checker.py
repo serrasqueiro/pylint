@@ -7,6 +7,7 @@
 # Copyright (c) 2015 Ionel Cristian Maries <contact@ionelmc.ro>
 # Copyright (c) 2016 Moises Lopez <moylop260@vauxoo.com>
 # Copyright (c) 2017-2018 Bryce Guinta <bryce.paul.guinta@gmail.com>
+# Copyright (c) 2020 HMoreira <h@serrasqueiro.com>
 
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 # For details: https://github.com/PyCQA/pylint/blob/master/COPYING
@@ -20,6 +21,8 @@ from pylint.exceptions import InvalidMessageError
 from pylint.interfaces import UNDEFINED, IRawChecker, ITokenChecker, implements
 from pylint.message.message_definition import MessageDefinition
 from pylint.utils import get_rst_section, get_rst_title
+
+from prized import PDebug
 
 
 class BaseChecker(OptionsProviderMixIn):
@@ -107,6 +110,14 @@ class BaseChecker(OptionsProviderMixIn):
             confidence = UNDEFINED
         self.linter.add_message(msgid, line, node, args, confidence, col_offset)
 
+    def add_picky_message(
+        self, msgid, line, args, col_offset
+    ):
+        _NODE = None    
+        s_msg = "{}:{}".format(msgid, ";".join(args[:-1]))
+        checker_debug.echo("[DEBUG]", s_msg)
+        self.linter.add_message(msgid, line, _NODE, args, confidence=UNDEFINED, col_offset=col_offset)
+
     def check_consistency(self):
         """Check the consistency of msgid.
 
@@ -185,3 +196,9 @@ class BaseTokenChecker(BaseChecker):
     def process_tokens(self, tokens):
         """Should be overridden by subclasses."""
         raise NotImplementedError()
+
+
+#
+# Global var
+#
+checker_debug = PDebug(__name__)

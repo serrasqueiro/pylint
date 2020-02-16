@@ -30,6 +30,7 @@
 # Copyright (c) 2018 Pierre Sassoulas <pierre.sassoulas@wisebim.fr>
 # Copyright (c) 2018 Andreas Freimuth <andreas.freimuth@united-bits.de>
 # Copyright (c) 2018 Jakub Wilk <jwilk@jwilk.net>
+# Copyright (c) 2020 HMoreira <h@serrasqueiro.com>
 
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 # For details: https://github.com/PyCQA/pylint/blob/master/COPYING
@@ -60,6 +61,7 @@ from pylint.checkers.utils import (
 from pylint.constants import WarningScope
 from pylint.interfaces import IAstroidChecker, IRawChecker, ITokenChecker
 from pylint.utils.pragma_parser import OPTION_PO, PragmaParserError, parse_pragma
+from prized import PDebug
 
 _ASYNC_TOKEN = "async"
 _CONTINUATION_BLOCK_OPENERS = [
@@ -705,6 +707,7 @@ class FormatChecker(BaseTokenChecker):
 
     def __init__(self, linter=None):
         BaseTokenChecker.__init__(self, linter)
+        self.debug = PDebug(__name__, __class__.__name__)
         self._lines = None
         self._visited_lines = None
         self._bracket_stack = [None]
@@ -947,7 +950,7 @@ class FormatChecker(BaseTokenChecker):
         for policy, position in warnings:
             construct = _name_construct(token)
             count, state = _policy_string(policy)
-            self.add_message(
+            self.add_picky_message(
                 "bad-whitespace",
                 line=token[2][0],
                 args=(count, state, position, construct, _underline_token(token)),
@@ -996,8 +999,10 @@ class FormatChecker(BaseTokenChecker):
 
         self._current_line = ContinuedLineState(tokens, self.config)
         for idx, (tok_type, token, start, _, line) in enumerate(tokens):
-            if start[0] != line_num:
-                line_num = start[0]
+            line_start, _ = start
+            self.debug.echo("[DEBUG]", "idx={}, line={}, token='{}'\n{}\n\n".format(idx, line_start, token.replace("\n","!"), line.replace("\n", "\\n")))
+            if line_start != line_num:
+                line_num = line_start
                 # A tokenizer oddity: if an indented line contains a multi-line
                 # docstring, the line member of the INDENT token does not contain
                 # the full line; therefore we check the next token on the line.
