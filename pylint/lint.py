@@ -554,8 +554,6 @@ class PyLinter(
         self.current_name = None
         self.current_file = None
         self.stats = None
-        # debug
-        self.lint_debug = PDebug("lint")
         # init options
         self._external_opts = options
         self.options = options + PyLinter.make_options()

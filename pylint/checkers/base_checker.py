@@ -22,7 +22,6 @@ from pylint.interfaces import UNDEFINED, IRawChecker, ITokenChecker, implements
 from pylint.message.message_definition import MessageDefinition
 from pylint.utils import get_rst_section, get_rst_title
 
-from prized import PDebug
 
 
 class BaseChecker(OptionsProviderMixIn):
@@ -113,17 +112,29 @@ class BaseChecker(OptionsProviderMixIn):
 
     def add_picky_message(self, msgid, line, args, col_offset):
         _NODE = None
+        _SKIP_C0326 = True  # only avoids complaining on this like : ( (def + ghi) )
         s_msg = "{}:{}".format(msgid, ";".join(args[:-1]))
         diggle = s_msg in ("bad-whitespace:No;allowed;before;bracket",
                            "bad-whitespace:No;allowed;after;bracket",
                            )
-        skip_C0326 = diggle
-        self.linter.debug.echo("[DEBUG]", "Skipped" if diggle else "Picky", ": ", s_msg)
-        if skip_C0326:
-            return False
+        s_line = args[-1]
+        if isinstance(s_line, str):
+            s_line = s_line.split("\n")[0].replace("\\", "(...)").strip()
         else:
-            self.linter.add_message(msgid, line, _NODE, args, confidence=UNDEFINED, col_offset=col_offset)
-        return True
+            s_line = "?"
+        mult_spaces = s_line.find("  ") >= 0
+        do_skip = _SKIP_C0326 and diggle and not mult_spaces
+        self.linter.debug.echo("[DEBUG]", "Skipped" if do_skip else "Picky", ": ", s_msg, "; '{}'".format(s_line))
+        if not do_skip:
+            if mult_spaces and args[0] == "No":
+                # 'C0326: No space allowed after bracket' -> C0326: No multiple space allowed after bracket
+                tup = list(args)
+                tup[0] = "No multiple"
+                tup = tuple(tup)
+            else:
+                tup = args
+            self.linter.add_message(msgid, line, _NODE, tup, confidence=UNDEFINED, col_offset=col_offset)
+        return do_skip
 
     def check_consistency(self):
         """Check the consistency of msgid.

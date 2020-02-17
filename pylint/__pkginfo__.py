@@ -12,6 +12,7 @@
 # Copyright (c) 2017-2018 Hugo <hugovk@users.noreply.github.com>
 # Copyright (c) 2018 Sushobhit <31987769+sushobhit27@users.noreply.github.com>
 # Copyright (c) 2018 Ashley Whetter <ashley@awhetter.co.uk>
+# Copyright (c) 2020 HMoreira <h@serrasqueiro.com>
 
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 # For details: https://github.com/PyCQA/pylint/blob/master/COPYING
@@ -22,8 +23,8 @@
 from os.path import join
 
 # For an official release, use dev_version = None
-numversion = (2, 5, 0)
-dev_version = "1"
+numversion = (2, 5, 1)
+dev_version = "2"
 
 version = ".".join(str(num) for num in numversion)
 if dev_version is not None:
