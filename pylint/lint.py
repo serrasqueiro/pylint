@@ -554,6 +554,8 @@ class PyLinter(
         self.current_name = None
         self.current_file = None
         self.stats = None
+        # debug
+        self.lint_debug = PDebug("lint")
         # init options
         self._external_opts = options
         self.options = options + PyLinter.make_options()
@@ -1511,10 +1513,16 @@ group are mutually exclusive.",
     def _return_one(*args):  # pylint: disable=unused-argument
         return 1
 
-    def __init__(self, args, reporter=None, do_exit=True):
+    def __init__(self, args, reporter=None, do_exit=True, with_debug=""):
         self._rcfile = None
         self._plugins = []
         self.verbose = None
+        if with_debug == "":
+            debug_level = 0
+        elif with_debug == "debug":
+            debug_level = 1
+        else:
+            assert False
         try:
             preprocess_options(
                 args,
@@ -1769,6 +1777,7 @@ group are mutually exclusive.",
         # We have loaded configuration from config file and command line. Now, we can
         # load plugin specific configuration.
         linter.load_plugin_configuration()
+        linter.debug.set_debug_level(debug_level)
 
         # insert current working directory to the python path to have a correct
         # behaviour

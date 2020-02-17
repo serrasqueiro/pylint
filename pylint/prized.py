@@ -20,16 +20,23 @@ class PDebug():
     """
     PDebug - a simple class for debugging.
     """
-    def __init__(self, module_name=".", class_name=None, default_level=1, err_file=None):
+    def __init__(self, module_name=".", class_name=None, default_level=0, err_file=None):
         self.name = module_name
         self.cname = class_name
-        self.level = default_level
+        self.set_debug_level(default_level)
         self.err_file = err_file if err_file is not None else stdout
         self._auto_nl = True
+
 
     def has_debug(self):
         assert 0 <= self.level <= 9
         return self.level > 0
+
+
+    def set_debug_level(self, level):
+        assert isinstance(level, int)
+        assert 0 <= level <= 9
+        self.level = level
 
 
     def echo(self, *args):
@@ -41,7 +48,7 @@ class PDebug():
         one = args[0]
         rest = args[1:]
         if one == "[DEBUG]":
-            one = "[DEBUG:{}]".format(self._best_name())
+            one = "[DEBUG:{}] ".format(self._best_name())
         s = one
         for arg in rest:
             s += "{}".format(arg)

@@ -109,14 +109,21 @@ class BaseChecker(OptionsProviderMixIn):
         if not confidence:
             confidence = UNDEFINED
         self.linter.add_message(msgid, line, node, args, confidence, col_offset)
+        return True
 
-    def add_picky_message(
-        self, msgid, line, args, col_offset
-    ):
-        _NODE = None    
+    def add_picky_message(self, msgid, line, args, col_offset):
+        _NODE = None
         s_msg = "{}:{}".format(msgid, ";".join(args[:-1]))
-        checker_debug.echo("[DEBUG]", s_msg)
-        self.linter.add_message(msgid, line, _NODE, args, confidence=UNDEFINED, col_offset=col_offset)
+        diggle = s_msg in ("bad-whitespace:No;allowed;before;bracket",
+                           "bad-whitespace:No;allowed;after;bracket",
+                           )
+        skip_C0326 = diggle
+        self.linter.debug.echo("[DEBUG]", "Skipped" if diggle else "Picky", ": ", s_msg)
+        if skip_C0326:
+            return False
+        else:
+            self.linter.add_message(msgid, line, _NODE, args, confidence=UNDEFINED, col_offset=col_offset)
+        return True
 
     def check_consistency(self):
         """Check the consistency of msgid.
@@ -196,9 +203,3 @@ class BaseTokenChecker(BaseChecker):
     def process_tokens(self, tokens):
         """Should be overridden by subclasses."""
         raise NotImplementedError()
-
-
-#
-# Global var
-#
-checker_debug = PDebug(__name__)
