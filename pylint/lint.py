@@ -87,7 +87,7 @@ from pylint.utils.pragma_parser import (
     UnRecognizedOptionError,
     parse_pragma,
 )
-from prized import PDebug
+from pylint.prized import PDebug
 
 try:
     import multiprocessing

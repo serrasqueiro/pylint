@@ -61,7 +61,7 @@ from pylint.checkers.utils import (
 from pylint.constants import WarningScope
 from pylint.interfaces import IAstroidChecker, IRawChecker, ITokenChecker
 from pylint.utils.pragma_parser import OPTION_PO, PragmaParserError, parse_pragma
-from prized import PDebug
+from pylint.prized import PDebug
 
 _ASYNC_TOKEN = "async"
 _CONTINUATION_BLOCK_OPENERS = [
