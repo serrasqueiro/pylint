@@ -14,6 +14,7 @@
 # Copyright (c) 2018-2019 Ashley Whetter <ashley@awhetter.co.uk>
 # Copyright (c) 2018 ssolanki <sushobhitsolanki@gmail.com>
 # Copyright (c) 2018 Sushobhit <31987769+sushobhit27@users.noreply.github.com>
+# Copyright (c) 2018 Ashley Whetter <ashley@awhetter.co.uk>
 # Copyright (c) 2019-2020 Ville Skyttä <ville.skytta@iki.fi>
 # Copyright (c) 2019 Hugo van Kemenade <hugovk@users.noreply.github.com>
 # Copyright (c) 2019 Dan Hemberger <846186+hemberger@users.noreply.github.com>
@@ -32,8 +33,8 @@
 from os.path import join
 
 # For an official release, use dev_version = None
-numversion = (2, 6, 1)
-dev_version = 1
+numversion = (2, 6, 3)
+dev_version = 3
 
 version = ".".join(str(num) for num in numversion)
 if dev_version is not None:

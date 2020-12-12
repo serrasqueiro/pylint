@@ -10,6 +10,7 @@
 # Copyright (c) 2018-2019 Pierre Sassoulas <pierre.sassoulas@gmail.com>
 # Copyright (c) 2018 ssolanki <sushobhitsolanki@gmail.com>
 # Copyright (c) 2019 Bruno P. Kinoshita <kinow@users.noreply.github.com>
+# Copyright (c) 2020 HMoreira <h@serrasqueiro.com>
 
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 # For details: https://github.com/PyCQA/pylint/blob/master/COPYING
@@ -23,6 +24,7 @@ from pylint.exceptions import InvalidMessageError
 from pylint.interfaces import UNDEFINED, IRawChecker, ITokenChecker, implements
 from pylint.message.message_definition import MessageDefinition
 from pylint.utils import get_rst_section, get_rst_title
+
 
 
 class BaseChecker(OptionsProviderMixIn):
@@ -109,6 +111,33 @@ class BaseChecker(OptionsProviderMixIn):
         if not confidence:
             confidence = UNDEFINED
         self.linter.add_message(msgid, line, node, args, confidence, col_offset)
+        return True
+
+    def add_picky_message(self, msgid, line, args, col_offset):
+        _NODE = None
+        _SKIP_C0326 = True  # only avoids complaining on this like : ( (def + ghi) )
+        s_msg = "{}:{}".format(msgid, ";".join(args[:-1]))
+        diggle = s_msg in ("bad-whitespace:No;allowed;before;bracket",
+                           "bad-whitespace:No;allowed;after;bracket",
+                           )
+        s_line = args[-1]
+        if isinstance(s_line, str):
+            s_line = s_line.split("\n")[0].replace("\\", "(...)").strip()
+        else:
+            s_line = "?"
+        mult_spaces = s_line.find("  ") >= 0
+        do_skip = _SKIP_C0326 and diggle and not mult_spaces
+        self.linter.debug.echo("[DEBUG]", "Skipped" if do_skip else "Picky", ": ", s_msg, "; '{}'".format(s_line))
+        if not do_skip:
+            if mult_spaces and args[0] == "No":
+                # 'C0326: No space allowed after bracket' -> C0326: No multiple space allowed after bracket
+                tup = list(args)
+                tup[0] = "No multiple"
+                tup = tuple(tup)
+            else:
+                tup = args
+            self.linter.add_message(msgid, line, _NODE, tup, confidence=UNDEFINED, col_offset=col_offset)
+        return do_skip
 
     def check_consistency(self):
         """Check the consistency of msgid.
