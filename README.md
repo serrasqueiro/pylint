@@ -2,7 +2,7 @@
 
 This is a fork from pylint ([github pylint](https://github.com/PyCQA/pylint)).
 Motivation was the fact I like code-style
-        ``f = a( 1, 2, 3)``
+        ``f = a( 1, 2, 3 )``
 and warnings like
 * ``C0326: No space allowed after bracket``
   + due to the following code (example):
@@ -10,11 +10,18 @@ and warnings like
 are annoying!
 * See also [stack overflow - thread](https://stackoverflow.com/questions/33876495/how-to-disable-no-space-allowed-around-keyword-argument-assignment-in-pylint).
 
+Documentation README is also [here](https://github.com/serrasqueiro/pylint/blob/master/README.rst) .
+
 ## Hints
 
 Just do ``git remote add upstream https://github.com/PyCQA/pylint``
 to keep this repo syncronized with the original project from where this got
 forked from.
+Or:
+```
+alias git_after_fork='git remote add upstream'
+git_after_fork git@github.com:PyCQA/pylint.git
+```
 
 To keep up with upstream (original) repo, do:
 * ``git merge upstream/master``
