@@ -78,7 +78,7 @@ from pylint.utils.pragma_parser import (
     UnRecognizedOptionError,
     parse_pragma,
 )
-from pylint.prized import PDebug
+from pylint.prized import PDebug, _get_python_path
 
 MANAGER = astroid.MANAGER
 
@@ -1799,5 +1799,3 @@ def cb_init_hook(optname, value):
 
 if __name__ == "__main__":
     Run(sys.argv[1:])
-=======
->>>>>>> new/flow:pylint/lint/pylinter.py

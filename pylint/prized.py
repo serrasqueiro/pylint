@@ -13,6 +13,7 @@
 Companion for debug.
 """
 
+import os
 from sys import stdout
 
 
@@ -67,6 +68,21 @@ class PDebug():
         else:
             s = self.cname
         return s
+
+
+def _get_python_path(filepath):
+    dirname = os.path.realpath(os.path.expanduser(filepath))
+    if not os.path.isdir(dirname):
+        dirname = os.path.dirname(dirname)
+    while True:
+        if not os.path.exists(os.path.join(dirname, "__init__.py")):
+            return dirname
+        old_dirname = dirname
+        dirname = os.path.dirname(dirname)
+        if old_dirname == dirname:
+            return os.getcwd()
+    return None
+
 
 if __name__ == "__main__":
     print("Import this module!")
