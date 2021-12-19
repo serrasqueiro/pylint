@@ -1,3 +1,5 @@
+.. _message-control:
+
 Messages control
 ================
 
@@ -39,6 +41,13 @@ The pragma controls can disable / enable:
 
         a, b = ... # pylint: disable=unbalanced-tuple-unpacking
 
+* All the violations on the following line
+
+    .. sourcecode:: python
+
+        # pylint: disable-next=unbalanced-tuple-unpacking
+        a, b = ...
+
 * All the violations in a single scope
 
     .. sourcecode:: python
@@ -59,7 +68,7 @@ The pragma controls can disable / enable:
             print(self.bla)
             if self.blop:
                 # pylint: enable=no-member
-                # disable all no-members for this block
+                # enable all no-members for this block
                 print(self.blip)
             else:
                 # This is affected by the scope disable
@@ -67,7 +76,7 @@ The pragma controls can disable / enable:
             # pylint: enable=no-member
             print(self.blip)
             if self.blop:
-                # pylint: enable=no-member
+                # pylint: disable=no-member
                 # disable all no-members for this block
                 print(self.blip)
             else:
@@ -178,3 +187,19 @@ Here's an example with all these rules in a single place:
             # no error
             print(self.bla)
             print(self.blop)
+
+        def meth9(self):
+            """test next line disabling"""
+            # no error
+            # pylint: disable-next=no-member
+            print(self.bla)
+            # error
+            print(self.blop)
+
+
+Detecting useless disables
+--------------------------
+
+As pylint gets better and false positives are removed,
+disables that became useless can accumulate and clutter the code.
+In order to clean them you can enable the ``useless-suppression`` warning.

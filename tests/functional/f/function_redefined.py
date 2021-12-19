@@ -1,7 +1,10 @@
-# pylint: disable=R0201,missing-docstring,using-constant-test,unused-import,wrong-import-position,reimported, useless-object-inheritance, unnecessary-pass
+# pylint: disable=no-self-use,missing-docstring,using-constant-test, useless-object-inheritance
+# pylint: disable=unused-import,wrong-import-position,reimported, unnecessary-pass
 from __future__ import division
-__revision__ = ''
 
+from typing import Callable
+
+__revision__ = ''
 class AAAA(object):
     """docstring"""
     def __init__(self):
@@ -107,3 +110,19 @@ class ObjectProxy:
     @property
     def __doc__(self):
         return "Docstring"
+
+
+# Do not emit the error for conditional definitions
+def func(callback1=None, callback2=None):
+    if not callback1:
+        def callback1():
+            return 42
+    if callback2 is None:
+        def callback2():
+            return 24
+    return callback1(), callback2()
+
+do_something: Callable[[], int]
+
+def do_something() -> int:
+    return 1

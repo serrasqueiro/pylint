@@ -7,7 +7,7 @@
 # pygtk.require().
 #init-hook=
 
-# Add files or directories to the blacklist. They should be base names, not
+# Files or directories to be skipped. They should be base names, not
 # paths.
 ignore=CVS
 
@@ -17,10 +17,22 @@ persistent=yes
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
 load-plugins=
-    pylint.extensions.check_elif
+    pylint.extensions.check_elif,
+    pylint.extensions.bad_builtin,
+    pylint.extensions.for_any_all,
+    pylint.extensions.set_membership,
+    pylint.extensions.code_style,
+    pylint.extensions.overlapping_exceptions,
+    pylint.extensions.typing,
+    pylint.extensions.redefined_variable_type,
+    pylint.extensions.comparison_placement,
 
 # Use multiple processes to speed up Pylint.
 jobs=1
+
+# When enabled, pylint would attempt to guess common misconfiguration and emit
+# user-friendly hints instead of false-positive error messages.
+suggestion-mode=yes
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
@@ -29,7 +41,10 @@ unsafe-load-any-extension=no
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code
-extension-pkg-whitelist=
+extension-pkg-allow-list=
+
+# Minimum supported python version
+py-version = 3.6.2
 
 
 [MESSAGES CONTROL]
@@ -41,13 +56,16 @@ confidence=
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
 # multiple time. See also the "--disable" option for examples.
-enable=use-symbolic-message-instead,useless-supression,fixme
+enable=
+    use-symbolic-message-instead,
+    useless-suppression,
+    fixme
 
 # Disable the message, report, category or checker with the given id(s). You
 # can either give multiple identifiers separated by comma (,) or put this
 # option multiple times (only on the command line, not in the configuration
 # file where it should appear only once).You can also use "--disable=all" to
-# disable everything first and then reenable specific checks. For example, if
+# disable everything first and then re-enable specific checks. For example, if
 # you want to run only the similarities checker, you can use "--disable=all
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
@@ -80,11 +98,11 @@ files-output=no
 reports=no
 
 # Python expression which should return a note less than 10 (10 is the highest
-# note). You have access to the variables errors warning, statement which
-# respectively contain the number of errors / warnings messages and the total
-# number of statements analyzed. This is used by the global evaluation report
-# (RP0004).
-evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+# note). You have access to the variables 'fatal', 'error', 'warning', 'refactor', 'convention'
+# and 'info', which contain the number of messages in each category, as
+# well as 'statement', which is the total number of statements analyzed. This
+# score is used by the global evaluation report (RP0004).
+evaluation=0 if fatal else 10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
 
 # Template used to display messages. This is a python new-style format string
 # used to format the message information. See doc for all details
@@ -155,7 +173,7 @@ no-space-check=trailing-comma,dict-separator
 # Maximum number of lines in a module
 max-module-lines=2000
 
-# String used as indentation unit. This is usually " " (4 spaces) or "\t" (1
+# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1
 # tab).
 indent-string='    '
 
@@ -167,9 +185,6 @@ expected-line-ending-format=
 
 
 [BASIC]
-
-# List of builtins function names that should not be used, separated by a comma
-bad-functions=map,filter,input
 
 # Good variable names which should always be accepted, separated by a comma
 good-names=i,j,k,ex,Run,_
@@ -245,7 +260,7 @@ method-rgx=[a-z_][a-z0-9_]{2,}$
 method-name-hint=[a-z_][a-z0-9_]{2,}$
 
 # Regular expression which should only match function or class names that do
-# not require a docstring.
+# not require a docstring. Use ^(?!__init__$)_ to also check __init__.
 no-docstring-rgx=__.*__
 
 # Minimum line length for functions/classes that require docstrings, shorter
@@ -258,13 +273,16 @@ property-classes=abc.abstractproperty
 
 [TYPECHECK]
 
-# Tells whether missing members accessed in mixin class should be ignored. A
-# mixin class is detected if its name ends with "mixin" (case insensitive).
+# Tells whether missing members accessed in mixin class should be ignored.
+# A class is considered mixin if its name matches the mixin-class-rgx option.
 ignore-mixin-members=yes
+
+# Regex pattern to define which classes are considered mixins.
+mixin-class-rgx=.*MixIn
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime
-# and thus existing member attributes cannot be deduced by static analysis
+# and thus existing member attributes cannot be deduced by static analysis)
 ignored-modules=
 
 # List of classes names for which member attributes should not be checked
@@ -314,13 +332,16 @@ max-locals=25
 max-returns=11
 
 # Maximum number of branch for function / method body
-max-branches=26
+max-branches=27
 
 # Maximum number of statements in function / method body
 max-statements=100
 
 # Maximum number of parents for a class (see R0901).
 max-parents=7
+
+# List of qualified class names to ignore when counting class parents (see R0901).
+ignored-parents=
 
 # Maximum number of attributes for a class (see R0902).
 max-attributes=11
@@ -331,6 +352,9 @@ min-public-methods=2
 # Maximum number of public methods for a class (see R0904).
 max-public-methods=25
 
+# List of regular expressions of class ancestor names to
+# ignore when counting public methods (see R0903).
+exclude-too-few-public-methods=
 
 [CLASSES]
 
@@ -371,3 +395,15 @@ int-import-graph=
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
 overgeneral-exceptions=Exception
+
+
+[TYPING]
+
+# Annotations are used exclusively for type checking
+runtime-typing = no
+
+
+[pylint.DEPRECATED_BUILTINS]
+
+# List of builtins function names that should not be used, separated by a comma
+bad-functions=map,input

@@ -1,10 +1,10 @@
 """Check unpacking non-sequences in assignments. """
 
-# pylint: disable=too-few-public-methods, invalid-name, attribute-defined-outside-init, unused-variable, no-absolute-import
+# pylint: disable=too-few-public-methods, invalid-name, attribute-defined-outside-init, unused-variable
 # pylint: disable=using-constant-test, no-init, missing-docstring, wrong-import-order,wrong-import-position,no-else-return, useless-object-inheritance
 from os import rename as nonseq_func
-from six import with_metaclass
 from functional.u.unpacking import nonseq
+from typing import NamedTuple
 
 __revision__ = 0
 
@@ -43,7 +43,7 @@ class MetaIter(type):
     def __iter__(cls):
         return iter((1, 2))
 
-class IterClass(with_metaclass(MetaIter)):
+class IterClass(metaclass=MetaIter):
     "class that is iterable (and unpackable)"
 
 class AbstrClass(object):
@@ -138,3 +138,12 @@ def flow_control_unpacking(var=None):
         var0, var1 = var
         return var0, var1
     return None
+
+
+class MyClass(NamedTuple):
+    x: float
+    y: float
+
+    def sum(self):
+        x, y = self
+        return x + y

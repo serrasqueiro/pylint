@@ -1,4 +1,4 @@
-# pylint: disable=R0903,import-error,missing-docstring,wrong-import-position,useless-super-delegation, useless-object-inheritance, unnecessary-pass
+# pylint: disable=too-few-public-methods,import-error,missing-docstring,wrong-import-position,useless-super-delegation, useless-object-inheritance, unnecessary-pass
 """test for __init__ not called
 """
 from __future__ import print_function
@@ -28,13 +28,13 @@ class ZZZZ(AAAA, BBBB, CCCC):
 class NewStyleA(object):
     """new style class"""
     def __init__(self):
-        super(NewStyleA, self).__init__()
+        super().__init__()
         print('init', self)
 
 class NewStyleB(NewStyleA):
     """derived new style class"""
     def __init__(self):
-        super(NewStyleB, self).__init__()
+        super().__init__()
 
 class NoInit(object):
     """No __init__ defined"""

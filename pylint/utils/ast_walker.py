@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/master/COPYING
+# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
 
 import collections
+import traceback
 
 from astroid import nodes
 
@@ -15,14 +14,12 @@ class ASTWalker:
         self.visit_events = collections.defaultdict(list)
         self.leave_events = collections.defaultdict(list)
         self.linter = linter
+        self.exception_msg = False
 
     def _is_method_enabled(self, method):
         if not hasattr(method, "checks_msgs"):
             return True
-        for msg_desc in method.checks_msgs:
-            if self.linter.is_message_enabled(msg_desc):
-                return True
-        return False
+        return any(self.linter.is_message_enabled(m) for m in method.checks_msgs)
 
     def add_checker(self, checker):
         """walk to the checker's dir and collect visit and leave methods"""
@@ -67,13 +64,21 @@ class ASTWalker:
         visit_events = self.visit_events.get(cid, ())
         leave_events = self.leave_events.get(cid, ())
 
-        if astroid.is_statement:
-            self.nbstatements += 1
-        # generate events for this node on each checker
-        for callback in visit_events or ():
-            callback(astroid)
-        # recurse on children
-        for child in astroid.get_children():
-            self.walk(child)
-        for callback in leave_events or ():
-            callback(astroid)
+        try:
+            if astroid.is_statement:
+                self.nbstatements += 1
+            # generate events for this node on each checker
+            for callback in visit_events or ():
+                callback(astroid)
+            # recurse on children
+            for child in astroid.get_children():
+                self.walk(child)
+            for callback in leave_events or ():
+                callback(astroid)
+        except Exception:
+            if self.exception_msg is False:
+                file = getattr(astroid.root(), "file", None)
+                print(f"Exception on node {repr(astroid)} in file '{file}'")
+                traceback.print_exc()
+                self.exception_msg = True
+            raise

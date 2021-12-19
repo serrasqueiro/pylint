@@ -230,7 +230,7 @@ Other Changes
   such as ``django``.
   You can also control this behaviour with ``pylint --limit-inference-results``
 
-  We also rewrote how `nodes_of_class` and `get_children` methods operate which
+  We also rewrote how ``nodes_of_class`` and ``get_children`` methods operate which
   should result in a performance boost for a couple of checks.
 
 * Fix a false positive ``inconsistent-return-statements`` message when exception is raised inside
@@ -355,5 +355,5 @@ Other Changes
 
 
 .. _PEP 563: https://www.python.org/dev/peps/pep-0563/
-.. _style guide: http://docs.python-guide.org/en/latest/writing/style/
+.. _style guide: https://docs.python-guide.org/en/latest/writing/style/
 .. _swap values presentation: http://python.net/~goodger/projects/pycon/2007/idiomatic/handout.html#swap-values

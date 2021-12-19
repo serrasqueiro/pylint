@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/master/COPYING
+# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
 
 import warnings
+from typing import Dict, Set
 
 import astroid
 
@@ -11,20 +10,20 @@ from pylint.checkers.utils import check_messages
 from pylint.utils import ASTWalker
 
 
-class TestASTWalker(object):
-    class MockLinter(object):
-        def __init__(self, msgs):
+class TestASTWalker:
+    class MockLinter:
+        def __init__(self, msgs: Dict[str, bool]) -> None:
             self._msgs = msgs
 
-        def is_message_enabled(self, msgid):
+        def is_message_enabled(self, msgid: str) -> bool:
             return self._msgs.get(msgid, True)
 
-    class Checker(object):
-        def __init__(self):
-            self.called = set()
+    class Checker:
+        def __init__(self) -> None:
+            self.called: Set[str] = set()
 
         @check_messages("first-message")
-        def visit_module(self, module):
+        def visit_module(self, module):  # pylint: disable=unused-argument
             self.called.add("module")
 
         @check_messages("second-message")
@@ -32,14 +31,14 @@ class TestASTWalker(object):
             raise NotImplementedError
 
         @check_messages("second-message", "third-message")
-        def visit_assignname(self, module):
+        def visit_assignname(self, module):  # pylint: disable=unused-argument
             self.called.add("assignname")
 
         @check_messages("second-message")
         def leave_assignname(self, module):
             raise NotImplementedError
 
-    def test_check_messages(self):
+    def test_check_messages(self) -> None:
         linter = self.MockLinter(
             {"first-message": True, "second-message": False, "third-message": True}
         )
@@ -49,13 +48,13 @@ class TestASTWalker(object):
         walker.walk(astroid.parse("x = func()"))
         assert {"module", "assignname"} == checker.called
 
-    def test_deprecated_methods(self):
-        class Checker(object):
-            def __init__(self):
+    def test_deprecated_methods(self) -> None:
+        class Checker:
+            def __init__(self) -> None:
                 self.called = False
 
             @check_messages("first-message")
-            def visit_assname(self, node):
+            def visit_assname(self, node):  # pylint: disable=unused-argument
                 self.called = True
 
         linter = self.MockLinter({"first-message": True})

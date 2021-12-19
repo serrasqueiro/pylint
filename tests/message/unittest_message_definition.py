@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/master/COPYING
+# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
 
 import sys
 from unittest import mock
@@ -22,8 +20,8 @@ from pylint.message import MessageDefinition
     ],
 )
 def test_create_invalid_message_type(msgid, expected):
-    checker_mock = mock.Mock(name='Checker')
-    checker_mock.name = 'checker'
+    checker_mock = mock.Mock(name="Checker")
+    checker_mock.name = "checker"
 
     with pytest.raises(InvalidMessageError) as invalid_message_error:
         MessageDefinition.check_msgid(msgid)
@@ -46,31 +44,33 @@ class FalseChecker(BaseChecker):
     }
 
 
-class TestMessagesDefinition(object):
-    def assert_with_fail_msg(self, msg, expected=True):
-        fail_msg = "With minversion='{}' and maxversion='{}',".format(
-            msg.minversion, msg.maxversion
+class TestMessagesDefinition:
+    @staticmethod
+    def assert_with_fail_msg(msg: MessageDefinition, expected: bool = True) -> None:
+        fail_msg = (
+            f"With minversion='{msg.minversion}' and maxversion='{msg.maxversion}',"
+            f" and the python interpreter being {sys.version_info} "
+            "the message should{}be emitable"
         )
-        fail_msg += " and the python interpreter being {} ".format(sys.version_info)
-        fail_msg += "the message should{}be emitable"
         if expected:
             assert msg.may_be_emitted(), fail_msg.format(" ")
         else:
             assert not msg.may_be_emitted(), fail_msg.format(" not ")
 
-    def get_message_definition(self):
-        args = [
+    @staticmethod
+    def get_message_definition() -> MessageDefinition:
+        kwargs = {"minversion": None, "maxversion": None}
+        return MessageDefinition(
             FalseChecker(),
             "W1234",
             "message",
             "description",
             "msg-symbol",
             WarningScope.NODE,
-        ]
-        kwargs = {"minversion": None, "maxversion": None}
-        return MessageDefinition(*args, **kwargs)
+            **kwargs,
+        )
 
-    def test_may_be_emitted(self):
+    def test_may_be_emitted(self) -> None:
         major = sys.version_info.major
         minor = sys.version_info.minor
         msg = self.get_message_definition()
@@ -85,7 +85,7 @@ class TestMessagesDefinition(object):
         msg.maxversion = (major, minor - 1)
         self.assert_with_fail_msg(msg, expected=False)
 
-    def test_repr(self):
+    def test_repr(self) -> None:
         msg = self.get_message_definition()
         repr_str = str([msg, msg])
         assert "W1234" in repr_str
@@ -93,7 +93,7 @@ class TestMessagesDefinition(object):
         expected = "[MessageDefinition:msg-symbol-one (W1234), MessageDefinition:msg-symbol-two (W1235)]"
         assert str(FalseChecker().messages) == expected
 
-    def test_str(self):
+    def test_str(self) -> None:
         msg = self.get_message_definition()
         str_msg = str(msg)
         assert "W1234" in str_msg
@@ -102,7 +102,7 @@ class TestMessagesDefinition(object):
 message one msg description"""
         assert str(FalseChecker().messages[0]) == expected
 
-    def test_format_help(self):
+    def test_format_help(self) -> None:
         msg = self.get_message_definition()
         major = sys.version_info.major
         minor = sys.version_info.minor

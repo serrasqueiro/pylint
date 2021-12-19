@@ -1,5 +1,5 @@
 """Check for definitions and usage happening on the same line."""
-#pylint: disable=missing-docstring,multiple-statements,no-absolute-import,parameter-unpacking,wrong-import-position,unnecessary-comprehension
+#pylint: disable=missing-docstring,multiple-statements,wrong-import-position,unnecessary-comprehension,unspecified-encoding
 from __future__ import print_function
 print([index
        for index in range(10)])
@@ -21,7 +21,7 @@ j = 4; LAMB = lambda x: x+j
 
 FUNC4 = lambda a, b: a != b
 
-# test http://www.logilab.org/ticket/6954:
+# test https://www.logilab.org/ticket/6954:
 
 with open('f') as f: print(f.read())
 

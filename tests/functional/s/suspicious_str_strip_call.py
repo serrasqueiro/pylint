@@ -1,4 +1,5 @@
 """Suspicious str.strip calls."""
+# pylint: disable=redundant-u-string-prefix
 __revision__ = 1
 
 ''.strip('yo')
@@ -7,4 +8,3 @@ __revision__ = 1
 u''.strip('http://')  # [bad-str-strip-call]
 u''.lstrip('http://')  # [bad-str-strip-call]
 b''.rstrip('http://')  # [bad-str-strip-call]
-"some_sensible_string".strip(None) # Don't crash

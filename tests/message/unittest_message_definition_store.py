@@ -1,18 +1,16 @@
-# -*- coding: utf-8 -*-
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/master/COPYING
+# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
 
 from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
+from pytest import CaptureFixture
 
 from pylint.checkers import BaseChecker
 from pylint.exceptions import InvalidMessageError, UnknownMessageError
 from pylint.message import MessageDefinition
-
-from .generic_fixtures import empty_store, store
+from pylint.message.message_definition_store import MessageDefinitionStore
 
 
 @pytest.mark.parametrize(
@@ -130,7 +128,9 @@ def test_register_error(empty_store, messages, expected):
     assert str(cm.value) == expected
 
 
-def test_register_error_new_id_duplicate_of_new(empty_store):
+def test_register_error_new_id_duplicate_of_new(
+    empty_store: MessageDefinitionStore,
+) -> None:
     class CheckerOne(BaseChecker):
         name = "checker_one"
         msgs = {"W1234": ("message one", "msg-symbol-one", "msg description.")}
@@ -142,12 +142,12 @@ def test_register_error_new_id_duplicate_of_new(empty_store):
     empty_store.register_messages_from_checker(CheckerOne())
     test_register_error(
         empty_store,
-        {"W1234": ("message two", "msg-symbol-two", "another msg description.")},
+        CheckerTwo.msgs,
         "Message id 'W1234' cannot have both 'msg-symbol-one' and 'msg-symbol-two' as symbolic name.",
     )
 
 
-def test_format_help(capsys, store):
+def test_format_help(capsys: CaptureFixture, store: MessageDefinitionStore) -> None:
     store.help_message([])
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -169,28 +169,32 @@ No such message id or symbol 'C1234'.
     )
 
 
-def test_get_msg_display_string(store):
+def test_get_msg_display_string(store: MessageDefinitionStore) -> None:
     assert store.get_msg_display_string("W1234") == "'msg-symbol'"
     assert store.get_msg_display_string("E1234") == "'duplicate-keyword-arg'"
 
 
-class TestMessageDefinitionStore(object):
-    def _compare_messages(self, desc, msg, checkerref=False):
+def test_check_message_id(store: MessageDefinitionStore) -> None:
+    w1234 = store.get_message_definitions("W1234")[0]
+    w0001 = store.get_message_definitions("W0001")[0]
+    e1234 = store.get_message_definitions("E1234")[0]
+    old_symbol = store.get_message_definitions("old-symbol")[0]
+    assert isinstance(w1234, MessageDefinition)
+    assert isinstance(e1234, MessageDefinition)
+    assert w1234 == w0001
+    assert w1234 == old_symbol
+    with pytest.raises(UnknownMessageError):
+        store.get_message_definitions("YB12")
+
+
+class TestMessageDefinitionStore:
+    @staticmethod
+    def _compare_messages(
+        desc: str, msg: MessageDefinition, checkerref: bool = False
+    ) -> None:
         assert desc == msg.format_help(checkerref=checkerref)
 
-    def test_check_message_id(self, store):
-        w1234 = store.get_message_definitions("W1234")[0]
-        w0001 = store.get_message_definitions("W0001")[0]
-        e1234 = store.get_message_definitions("E1234")[0]
-        old_symbol = store.get_message_definitions("old-symbol")[0]
-        assert isinstance(w1234, MessageDefinition)
-        assert isinstance(e1234, MessageDefinition)
-        assert w1234 == w0001
-        assert w1234 == old_symbol
-        with pytest.raises(UnknownMessageError):
-            store.get_message_definitions("YB12")
-
-    def test_message_help(self, store):
+    def test_message_help(self, store: MessageDefinitionStore) -> None:
         message_definition = store.get_message_definitions("W1234")[0]
         self._compare_messages(
             """:msg-symbol (W1234): *message*
@@ -205,7 +209,7 @@ class TestMessageDefinitionStore(object):
             checkerref=False,
         )
 
-    def test_message_help_minmax(self, store):
+    def test_message_help_minmax(self, store: MessageDefinitionStore) -> None:
         # build the message manually to be python version independent
         message_definition = store.get_message_definitions("E1234")[0]
         self._compare_messages(
@@ -224,20 +228,22 @@ class TestMessageDefinitionStore(object):
             checkerref=False,
         )
 
-    def test_list_messages(self, store):
-        output = StringIO()
-        with redirect_stdout(output):
-            store.list_messages()
-        # cursory examination of the output: we're mostly testing it completes
-        assert ":msg-symbol (W1234): *message*" in output.getvalue()
 
-    def test_renamed_message_register(self, store):
-        assert "msg-symbol" == store.get_message_definitions("W0001")[0].symbol
-        assert "msg-symbol" == store.get_message_definitions("old-symbol")[0].symbol
+def test_list_messages(store: MessageDefinitionStore) -> None:
+    output = StringIO()
+    with redirect_stdout(output):
+        store.list_messages()
+    # cursory examination of the output: we're mostly testing it completes
+    assert ":msg-symbol (W1234): *message*" in output.getvalue()
 
 
-def test_multiple_child_of_old_name(store):
-    """ We can define multiple name with the same old name. """
+def test_renamed_message_register(store: MessageDefinitionStore) -> None:
+    assert store.get_message_definitions("W0001")[0].symbol == "msg-symbol"
+    assert store.get_message_definitions("old-symbol")[0].symbol == "msg-symbol"
+
+
+def test_multiple_child_of_old_name(store: MessageDefinitionStore) -> None:
+    """We can define multiple name with the same old name."""
 
     class FamillyChecker(BaseChecker):
         name = "famillychecker"
@@ -263,7 +269,5 @@ def test_multiple_child_of_old_name(store):
     assert len(mother) == 2
     assert len(child) == 1
     assert len(other_child) == 1
-    child = child[0]
-    other_child = other_child[0]
-    assert child in mother
-    assert other_child in mother
+    assert child[0] in mother
+    assert other_child[0] in mother

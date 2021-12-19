@@ -1,7 +1,7 @@
 """ Checks that classes uses valid __slots__ """
 
-# pylint: disable=too-few-public-methods, missing-docstring, no-absolute-import, useless-object-inheritance
-# pylint: disable=using-constant-test, wrong-import-position, no-else-return, line-too-long
+# pylint: disable=too-few-public-methods, missing-docstring,  useless-object-inheritance
+# pylint: disable=using-constant-test, wrong-import-position, no-else-return, line-too-long, unused-private-member
 from collections import deque
 
 def func():
@@ -25,7 +25,7 @@ class ThirdGood(object):
     __slots__ = ['a']
 
 class FourthGood(object):
-    __slots__ = ('a%s' % i for i in range(10))
+    __slots__ = (f'a{i}' for i in range(10))
 
 class FifthGood(object):
     __slots__ = deque(["a", "b", "c"])
@@ -64,9 +64,6 @@ class PotentiallySecondGood(object):
     __slots__ = ('a', deque.__name__)
 
 
-import six
-
-
 class Metaclass(type):
 
     def __iter__(cls):
@@ -74,8 +71,7 @@ class Metaclass(type):
             yield str(value)
 
 
-@six.add_metaclass(Metaclass)
-class IterableClass(object):
+class IterableClass(object, metaclass=Metaclass):
     pass
 
 class PotentiallyThirdGood(object):

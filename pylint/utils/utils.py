@@ -1,21 +1,83 @@
-# -*- coding: utf-8 -*-
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/master/COPYING
+# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
+
+
+try:
+    import isort.api
+
+    HAS_ISORT_5 = True
+except ImportError:  # isort < 5
+    import isort
+
+    HAS_ISORT_5 = False
 
 import codecs
+import os
 import re
 import sys
 import textwrap
 import tokenize
-from os import linesep, listdir
-from os.path import basename, dirname, exists, isdir, join, normpath, splitext
+from io import BufferedReader, BytesIO
+from typing import (
+    TYPE_CHECKING,
+    List,
+    Optional,
+    Pattern,
+    TextIO,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
-from astroid import Module, modutils
+from astroid import Module, modutils, nodes
 
 from pylint.constants import PY_EXTS
 
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
+
+if TYPE_CHECKING:
+    from pylint.checkers.base_checker import BaseChecker
+
 DEFAULT_LINE_LENGTH = 79
+
+# These are types used to overload get_global_option() and refer to the options type
+GLOBAL_OPTION_BOOL = Literal[
+    "ignore-mixin-members",
+    "suggestion-mode",
+    "analyse-fallback-blocks",
+    "allow-global-unused-variables",
+]
+GLOBAL_OPTION_INT = Literal["max-line-length", "docstring-min-length"]
+GLOBAL_OPTION_LIST = Literal["ignored-modules"]
+GLOBAL_OPTION_PATTERN = Literal[
+    "no-docstring-rgx",
+    "dummy-variables-rgx",
+    "ignored-argument-names",
+    "mixin-class-rgx",
+]
+GLOBAL_OPTION_PATTERN_LIST = Literal["exclude-too-few-public-methods", "ignore-paths"]
+GLOBAL_OPTION_TUPLE_INT = Literal["py-version"]
+GLOBAL_OPTION_NAMES = Union[
+    GLOBAL_OPTION_BOOL,
+    GLOBAL_OPTION_INT,
+    GLOBAL_OPTION_LIST,
+    GLOBAL_OPTION_PATTERN,
+    GLOBAL_OPTION_PATTERN_LIST,
+    GLOBAL_OPTION_TUPLE_INT,
+]
+T_GlobalOptionReturnTypes = TypeVar(
+    "T_GlobalOptionReturnTypes",
+    bool,
+    int,
+    List[str],
+    Pattern[str],
+    List[Pattern[str]],
+    Tuple[int, ...],
+)
 
 
 def normalize_text(text, line_len=DEFAULT_LINE_LENGTH, indent=""):
@@ -25,6 +87,23 @@ def normalize_text(text, line_len=DEFAULT_LINE_LENGTH, indent=""):
             text, width=line_len, initial_indent=indent, subsequent_indent=indent
         )
     )
+
+
+CMPS = ["=", "-", "+"]
+
+
+# py3k has no more cmp builtin
+def cmp(a, b):
+    return (a > b) - (a < b)
+
+
+def diff_string(old, new):
+    """given an old and new int value, return a string representing the
+    difference
+    """
+    diff = abs(old - new)
+    diff_str = f"{CMPS[cmp(old, new)]}{diff and f'{diff:.2f}' or ''}"
+    return diff_str
 
 
 def get_module_and_frameid(node):
@@ -39,14 +118,14 @@ def get_module_and_frameid(node):
         try:
             frame = frame.parent.frame()
         except AttributeError:
-            frame = None
+            break
     obj.reverse()
     return module, ".".join(obj)
 
 
 def get_rst_title(title, character):
     """Permit to get a title formatted as ReStructuredText test (underlined with a chosen character)."""
-    return "%s\n%s\n" % (title, character * len(title))
+    return f"{title}\n{character * len(title)}\n"
 
 
 def get_rst_section(section, options, doc=None):
@@ -56,28 +135,24 @@ def get_rst_section(section, options, doc=None):
         result += get_rst_title(section, "'")
     if doc:
         formatted_doc = normalize_text(doc)
-        result += "%s\n\n" % formatted_doc
+        result += f"{formatted_doc}\n\n"
     for optname, optdict, value in options:
         help_opt = optdict.get("help")
-        result += ":%s:\n" % optname
+        result += f":{optname}:\n"
         if help_opt:
             formatted_help = normalize_text(help_opt, indent="  ")
-            result += "%s\n" % formatted_help
-        if value:
+            result += f"{formatted_help}\n"
+        if value and optname != "py-version":
             value = str(_format_option_value(optdict, value))
-            result += "\n  Default: ``%s``\n" % value.replace("`` ", "```` ``")
+            result += f"\n  Default: ``{value.replace('`` ', '```` ``')}``\n"
     return result
 
 
-def safe_decode(line, encoding, *args, **kwargs):
-    """return decoded line from encoding or decode with default encoding"""
-    try:
-        return line.decode(encoding or sys.getdefaultencoding(), *args, **kwargs)
-    except LookupError:
-        return line.decode(sys.getdefaultencoding(), *args, **kwargs)
-
-
-def decoding_stream(stream, encoding, errors="strict"):
+def decoding_stream(
+    stream: Union[BufferedReader, BytesIO],
+    encoding: str,
+    errors: Literal["strict"] = "strict",
+) -> codecs.StreamReader:
     try:
         reader_cls = codecs.getreader(encoding or sys.getdefaultencoding())
     except LookupError:
@@ -85,121 +160,10 @@ def decoding_stream(stream, encoding, errors="strict"):
     return reader_cls(stream, errors)
 
 
-def tokenize_module(module):
-    with module.stream() as stream:
+def tokenize_module(node: nodes.Module) -> List[tokenize.TokenInfo]:
+    with node.stream() as stream:
         readline = stream.readline
         return list(tokenize.tokenize(readline))
-
-
-def _basename_in_blacklist_re(base_name, black_list_re):
-    """Determines if the basename is matched in a regex blacklist
-
-    :param str base_name: The basename of the file
-    :param list black_list_re: A collection of regex patterns to match against.
-        Successful matches are blacklisted.
-
-    :returns: `True` if the basename is blacklisted, `False` otherwise.
-    :rtype: bool
-    """
-    for file_pattern in black_list_re:
-        if file_pattern.match(base_name):
-            return True
-    return False
-
-
-def _modpath_from_file(filename, is_namespace):
-    def _is_package_cb(path, parts):
-        return modutils.check_modpath_has_init(path, parts) or is_namespace
-
-    return modutils.modpath_from_file_with_callback(
-        filename, is_package_cb=_is_package_cb
-    )
-
-
-def expand_modules(files_or_modules, black_list, black_list_re):
-    """take a list of files/modules/packages and return the list of tuple
-    (file, module name) which have to be actually checked
-    """
-    result = []
-    errors = []
-    for something in files_or_modules:
-        if basename(something) in black_list:
-            continue
-        if _basename_in_blacklist_re(basename(something), black_list_re):
-            continue
-        if exists(something):
-            # this is a file or a directory
-            try:
-                modname = ".".join(modutils.modpath_from_file(something))
-            except ImportError:
-                modname = splitext(basename(something))[0]
-            if isdir(something):
-                filepath = join(something, "__init__.py")
-            else:
-                filepath = something
-        else:
-            # suppose it's a module or package
-            modname = something
-            try:
-                filepath = modutils.file_from_modpath(modname.split("."))
-                if filepath is None:
-                    continue
-            except (ImportError, SyntaxError) as ex:
-                # The SyntaxError is a Python bug and should be
-                # removed once we move away from imp.find_module: http://bugs.python.org/issue10588
-                errors.append({"key": "fatal", "mod": modname, "ex": ex})
-                continue
-
-        filepath = normpath(filepath)
-        modparts = (modname or something).split(".")
-
-        try:
-            spec = modutils.file_info_from_modpath(modparts, path=sys.path)
-        except ImportError:
-            # Might not be acceptable, don't crash.
-            is_namespace = False
-            is_directory = isdir(something)
-        else:
-            is_namespace = modutils.is_namespace(spec)
-            is_directory = modutils.is_directory(spec)
-
-        if not is_namespace:
-            result.append(
-                {
-                    "path": filepath,
-                    "name": modname,
-                    "isarg": True,
-                    "basepath": filepath,
-                    "basename": modname,
-                }
-            )
-
-        has_init = (
-            not (modname.endswith(".__init__") or modname == "__init__")
-            and basename(filepath) == "__init__.py"
-        )
-
-        if has_init or is_namespace or is_directory:
-            for subfilepath in modutils.get_module_files(
-                dirname(filepath), black_list, list_all=is_namespace
-            ):
-                if filepath == subfilepath:
-                    continue
-                if _basename_in_blacklist_re(basename(subfilepath), black_list_re):
-                    continue
-
-                modpath = _modpath_from_file(subfilepath, is_namespace)
-                submodname = ".".join(modpath)
-                result.append(
-                    {
-                        "path": subfilepath,
-                        "name": submodname,
-                        "isarg": False,
-                        "basepath": filepath,
-                        "basename": modname,
-                    }
-                )
-    return result, errors
 
 
 def register_plugins(linter, directory):
@@ -207,32 +171,90 @@ def register_plugins(linter, directory):
     'register' function in each one, used to register pylint checkers
     """
     imported = {}
-    for filename in listdir(directory):
-        base, extension = splitext(filename)
+    for filename in os.listdir(directory):
+        base, extension = os.path.splitext(filename)
         if base in imported or base == "__pycache__":
             continue
         if (
             extension in PY_EXTS
             and base != "__init__"
-            or (not extension and isdir(join(directory, base)))
+            or (
+                not extension
+                and os.path.isdir(os.path.join(directory, base))
+                and not filename.startswith(".")
+            )
         ):
             try:
-                module = modutils.load_module_from_file(join(directory, filename))
+                module = modutils.load_module_from_file(
+                    os.path.join(directory, filename)
+                )
             except ValueError:
                 # empty module name (usually emacs auto-save files)
                 continue
             except ImportError as exc:
-                print(
-                    "Problem importing module %s: %s" % (filename, exc), file=sys.stderr
-                )
+                print(f"Problem importing module {filename}: {exc}", file=sys.stderr)
             else:
                 if hasattr(module, "register"):
                     module.register(linter)
                     imported[base] = 1
 
 
-def get_global_option(checker, option, default=None):
-    """ Retrieve an option defined by the given *checker* or
+@overload
+def get_global_option(
+    checker: "BaseChecker", option: GLOBAL_OPTION_BOOL, default: Optional[bool] = None
+) -> bool:
+    ...
+
+
+@overload
+def get_global_option(
+    checker: "BaseChecker", option: GLOBAL_OPTION_INT, default: Optional[int] = None
+) -> int:
+    ...
+
+
+@overload
+def get_global_option(
+    checker: "BaseChecker",
+    option: GLOBAL_OPTION_LIST,
+    default: Optional[List[str]] = None,
+) -> List[str]:
+    ...
+
+
+@overload
+def get_global_option(
+    checker: "BaseChecker",
+    option: GLOBAL_OPTION_PATTERN,
+    default: Optional[Pattern[str]] = None,
+) -> Pattern[str]:
+    ...
+
+
+@overload
+def get_global_option(
+    checker: "BaseChecker",
+    option: GLOBAL_OPTION_PATTERN_LIST,
+    default: Optional[List[Pattern[str]]] = None,
+) -> List[Pattern[str]]:
+    ...
+
+
+@overload
+def get_global_option(
+    checker: "BaseChecker",
+    option: GLOBAL_OPTION_TUPLE_INT,
+    default: Optional[Tuple[int, ...]] = None,
+) -> Tuple[int, ...]:
+    ...
+
+
+def get_global_option(
+    checker: "BaseChecker",
+    option: GLOBAL_OPTION_NAMES,
+    default: Optional[T_GlobalOptionReturnTypes] = None,
+) -> Optional[T_GlobalOptionReturnTypes]:
+    """Retrieve an option defined by the given *checker* or
     by all known option providers.
 
     It will look in the list of all options providers
@@ -251,26 +273,6 @@ def get_global_option(checker, option, default=None):
             if options[0] == option:
                 return getattr(provider.config, option.replace("-", "_"))
     return default
-
-
-def deprecated_option(
-    shortname=None, opt_type=None, help_msg=None, deprecation_msg=None
-):
-    def _warn_deprecated(option, optname, *args):  # pylint: disable=unused-argument
-        if deprecation_msg:
-            sys.stderr.write(deprecation_msg % (optname,))
-
-    option = {
-        "help": help_msg,
-        "hide": True,
-        "type": opt_type,
-        "action": "callback",
-        "callback": _warn_deprecated,
-        "deprecated": True,
-    }
-    if shortname:
-        option["shortname"] = shortname
-    return option
 
 
 def _splitstrip(string, sep=","):
@@ -320,37 +322,42 @@ def _check_csv(value):
     return _splitstrip(value)
 
 
-def _comment(string):
+def _comment(string: str) -> str:
     """return string as a comment"""
     lines = [line.strip() for line in string.splitlines()]
-    return "# " + ("%s# " % linesep).join(lines)
+    sep = "\n"
+    return "# " + f"{sep}# ".join(lines)
 
 
 def _format_option_value(optdict, value):
     """return the user input's value from a 'compiled' value"""
-    if isinstance(value, (list, tuple)):
+    if optdict.get("type", None) == "py_version":
+        value = ".".join(str(item) for item in value)
+    elif isinstance(value, (list, tuple)):
         value = ",".join(_format_option_value(optdict, item) for item in value)
     elif isinstance(value, dict):
-        value = ",".join("%s:%s" % (k, v) for k, v in value.items())
+        value = ",".join(f"{k}:{v}" for k, v in value.items())
     elif hasattr(value, "match"):  # optdict.get('type') == 'regexp'
         # compiled regexp
         value = value.pattern
     elif optdict.get("type") == "yn":
         value = "yes" if value else "no"
     elif isinstance(value, str) and value.isspace():
-        value = "'%s'" % value
+        value = f"'{value}'"
     return value
 
 
-def format_section(stream, section, options, doc=None):
+def format_section(
+    stream: TextIO, section: str, options: List[Tuple], doc: Optional[str] = None
+) -> None:
     """format an options section using the INI format"""
     if doc:
         print(_comment(doc), file=stream)
-    print("[%s]" % section, file=stream)
+    print(f"[{section}]", file=stream)
     _ini_format(stream, options)
 
 
-def _ini_format(stream, options):
+def _ini_format(stream: TextIO, options: List[Tuple]) -> None:
     """format options using the INI format"""
     for optname, optdict, value in options:
         value = _format_option_value(optdict, value)
@@ -362,7 +369,7 @@ def _ini_format(stream, options):
         else:
             print(file=stream)
         if value is None:
-            print("#%s=" % optname, file=stream)
+            print(f"#{optname}=", file=stream)
         else:
             value = str(value).strip()
             if re.match(r"^([\w-]+,)+[\w-]+$", str(value)):
@@ -370,4 +377,30 @@ def _ini_format(stream, options):
                 value = separator.join(x + "," for x in str(value).split(","))
                 # remove trailing ',' from last element of the list
                 value = value[:-1]
-            print("%s=%s" % (optname, value), file=stream)
+            print(f"{optname}={value}", file=stream)
+
+
+class IsortDriver:
+    """A wrapper around isort API that changed between versions 4 and 5."""
+
+    def __init__(self, config):
+        if HAS_ISORT_5:
+            self.isort5_config = isort.api.Config(
+                # There is not typo here. EXTRA_standard_library is
+                # what most users want. The option has been named
+                # KNOWN_standard_library for ages in pylint and we
+                # don't want to break compatibility.
+                extra_standard_library=config.known_standard_library,
+                known_third_party=config.known_third_party,
+            )
+        else:
+            self.isort4_obj = isort.SortImports(  # pylint: disable=no-member
+                file_contents="",
+                known_standard_library=config.known_standard_library,
+                known_third_party=config.known_third_party,
+            )
+
+    def place_module(self, package):
+        if HAS_ISORT_5:
+            return isort.api.place_module(package, self.isort5_config)
+        return self.isort4_obj.place_module(package)

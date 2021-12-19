@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/master/COPYING
+# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
 
 
 import collections
+from typing import Optional, Tuple, Union, overload
+from warnings import warn
 
 from pylint.constants import MSG_TYPES
+from pylint.interfaces import Confidence
+from pylint.typing import MessageLocationTuple
 
 _MsgBase = collections.namedtuple(
     "_MsgBase",
@@ -23,6 +25,8 @@ _MsgBase = collections.namedtuple(
         "obj",
         "line",
         "column",
+        "end_line",
+        "end_column",
     ],
 )
 
@@ -30,7 +34,46 @@ _MsgBase = collections.namedtuple(
 class Message(_MsgBase):
     """This class represent a message to be issued by the reporters"""
 
-    def __new__(cls, msg_id, symbol, location, msg, confidence):
+    @overload
+    def __new__(
+        cls,
+        msg_id: str,
+        symbol: str,
+        location: MessageLocationTuple,
+        msg: str,
+        confidence: Optional[Confidence],
+    ) -> "Message":
+        ...
+
+    @overload
+    def __new__(
+        cls,
+        msg_id: str,
+        symbol: str,
+        location: Tuple[str, str, str, str, int, int],
+        msg: str,
+        confidence: Optional[Confidence],
+    ) -> "Message":
+        # Remove for pylint 3.0
+        ...
+
+    def __new__(
+        cls,
+        msg_id: str,
+        symbol: str,
+        location: Union[
+            Tuple[str, str, str, str, int, int],
+            MessageLocationTuple,
+        ],
+        msg: str,
+        confidence: Optional[Confidence],
+    ) -> "Message":
+        if not isinstance(location, MessageLocationTuple):
+            warn(
+                "In pylint 3.0, Messages will only accept a MessageLocationTuple as location parameter",
+                DeprecationWarning,
+            )
+            location = location + (None, None)  # type: ignore[assignment] # Temporary fix until deprecation
         return _MsgBase.__new__(
             cls,
             msg_id,
@@ -42,12 +85,10 @@ class Message(_MsgBase):
             *location
         )
 
-    def format(self, template):
+    def format(self, template: str) -> str:
         """Format the message according to the given template.
 
         The template format is the one of the format method :
-        cf. http://docs.python.org/2/library/string.html#formatstrings
+        cf. https://docs.python.org/2/library/string.html#formatstrings
         """
-        # For some reason, _asdict on derived namedtuples does not work with
-        # Python 3.4. Needs some investigation.
-        return template.format(**dict(zip(self._fields, self)))
+        return template.format(**self._asdict())
