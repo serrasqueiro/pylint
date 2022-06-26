@@ -1,71 +1,49 @@
-# Copyright (c) 2006-2014 LOGILAB S.A. (Paris, FRANCE) <contact@logilab.fr>
-# Copyright (c) 2011-2014 Google, Inc.
-# Copyright (c) 2012 Kevin Jing Qiu <kevin.jing.qiu@gmail.com>
-# Copyright (c) 2012 Anthony VEREZ <anthony.verez.external@cassidian.com>
-# Copyright (c) 2012 FELD Boris <lothiraldan@gmail.com>
-# Copyright (c) 2013-2018, 2020 Claudiu Popa <pcmanticore@gmail.com>
-# Copyright (c) 2014 Arun Persaud <arun@nubati.net>
-# Copyright (c) 2015 Florian Bruhin <me@the-compiler.org>
-# Copyright (c) 2015 Noam Yorav-Raphael <noamraph@gmail.com>
-# Copyright (c) 2015 Ionel Cristian Maries <contact@ionelmc.ro>
-# Copyright (c) 2016-2017 Derek Gustafson <degustaf@gmail.com>
-# Copyright (c) 2016 Glenn Matthews <glenn@e-dad.net>
-# Copyright (c) 2016 Glenn Matthews <glmatthe@cisco.com>
-# Copyright (c) 2017-2021 Pierre Sassoulas <pierre.sassoulas@gmail.com>
-# Copyright (c) 2017, 2021 Ville Skyttä <ville.skytta@iki.fi>
-# Copyright (c) 2017 Craig Citro <craigcitro@gmail.com>
-# Copyright (c) 2017 Łukasz Rogalski <rogalski.91@gmail.com>
-# Copyright (c) 2018, 2020 Anthony Sottile <asottile@umich.edu>
-# Copyright (c) 2018 Matus Valo <matusvalo@users.noreply.github.com>
-# Copyright (c) 2018 Scott Worley <scottworley@scottworley.com>
-# Copyright (c) 2018 Randall Leeds <randall@bleeds.info>
-# Copyright (c) 2018 Sushobhit <31987769+sushobhit27@users.noreply.github.com>
-# Copyright (c) 2018 Reverb C <reverbc@users.noreply.github.com>
-# Copyright (c) 2019 Janne Rönkkö <jannero@users.noreply.github.com>
-# Copyright (c) 2019 Trevor Bekolay <tbekolay@gmail.com>
-# Copyright (c) 2019 Andres Perez Hortal <andresperezcba@gmail.com>
-# Copyright (c) 2019 Ashley Whetter <ashley@awhetter.co.uk>
-# Copyright (c) 2020 Martin Vielsmaier <martin@vielsmaier.net>
-# Copyright (c) 2020 hippo91 <guillaume.peillex@gmail.com>
-# Copyright (c) 2020 Damien Baty <damien.baty@polyconseil.fr>
-# Copyright (c) 2021 Daniël van Noord <13665637+DanielNoord@users.noreply.github.com>
-# Copyright (c) 2021 Michal Vasilek <michal@vasilek.cz>
-# Copyright (c) 2021 Eisuke Kawashima <e-kwsm@users.noreply.github.com>
-# Copyright (c) 2021 Marc Mueller <30130371+cdce8p@users.noreply.github.com>
-# Copyright (c) 2021 Andreas Finkler <andi.finkler@gmail.com>
-
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 # For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+
 # pylint: disable=redefined-outer-name
 
+from __future__ import annotations
+
+import argparse
+import datetime
 import os
 import re
 import sys
 import tempfile
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from importlib import reload
 from io import StringIO
 from os import chdir, getcwd
-from os.path import abspath, basename, dirname, isdir, join, sep
+from os.path import abspath, dirname, join, sep
+from pathlib import Path
 from shutil import rmtree
-from typing import Iterable, Iterator, List, Optional, Tuple
 
 import platformdirs
 import pytest
 from pytest import CaptureFixture
 
 from pylint import checkers, config, exceptions, interfaces, lint, testutils
-from pylint.checkers.utils import check_messages
+from pylint.checkers.utils import only_required_for_messages
 from pylint.constants import (
     MSG_STATE_CONFIDENCE,
     MSG_STATE_SCOPE_CONFIG,
     MSG_STATE_SCOPE_MODULE,
     OLD_DEFAULT_PYLINT_HOME,
+    PYLINT_HOME,
+    USER_HOME,
+    _get_pylint_home,
+    _warn_about_old_home,
 )
 from pylint.exceptions import InvalidMessageError
-from pylint.lint import ArgumentPreprocessingError, PyLinter, Run, preprocess_options
+from pylint.lint import PyLinter
+from pylint.lint.utils import fix_import_path
 from pylint.message import Message
 from pylint.reporters import text
+from pylint.testutils import create_files
+from pylint.testutils._run import _Run as Run
 from pylint.typing import MessageLocationTuple
 from pylint.utils import FileState, print_full_documentation, tokenize_module
 
@@ -129,44 +107,6 @@ def tempdir() -> Iterator[str]:
         rmtree(abs_tmp)
 
 
-def create_files(paths: List[str], chroot: str = ".") -> None:
-    """Creates directories and files found in <path>.
-
-    :param list paths: list of relative paths to files or directories
-    :param str chroot: the root directory in which paths will be created
-
-    >>> from os.path import isdir, isfile
-    >>> isdir('/tmp/a')
-    False
-    >>> create_files(['a/b/foo.py', 'a/b/c/', 'a/b/c/d/e.py'], '/tmp')
-    >>> isdir('/tmp/a')
-    True
-    >>> isdir('/tmp/a/b/c')
-    True
-    >>> isfile('/tmp/a/b/c/d/e.py')
-    True
-    >>> isfile('/tmp/a/b/foo.py')
-    True
-    """
-    dirs, files = set(), set()
-    for path in paths:
-        path = join(chroot, path)
-        filename = basename(path)
-        # path is a directory path
-        if filename == "":
-            dirs.add(path)
-        # path is a filename path
-        else:
-            dirs.add(dirname(path))
-            files.add(path)
-    for dirpath in dirs:
-        if not isdir(dirpath):
-            os.makedirs(dirpath)
-    for filepath in files:
-        with open(filepath, "w", encoding="utf-8"):
-            pass
-
-
 @pytest.fixture
 def fake_path() -> Iterator[Iterable[str]]:
     orig = list(sys.path)
@@ -176,7 +116,7 @@ def fake_path() -> Iterator[Iterable[str]]:
     sys.path[:] = orig
 
 
-def test_no_args(fake_path: List[int]) -> None:
+def test_no_args(fake_path: list[int]) -> None:
     with lint.fix_import_path([]):
         assert sys.path == fake_path
     assert sys.path == fake_path
@@ -185,7 +125,7 @@ def test_no_args(fake_path: List[int]) -> None:
 @pytest.mark.parametrize(
     "case", [["a/b/"], ["a/b"], ["a/b/__init__.py"], ["a/"], ["a"]]
 )
-def test_one_arg(fake_path: List[str], case: List[str]) -> None:
+def test_one_arg(fake_path: list[str], case: list[str]) -> None:
     with tempdir() as chroot:
         create_files(["a/b/__init__.py"])
         expected = [join(chroot, "a")] + fake_path
@@ -249,20 +189,25 @@ def reporter():
 
 
 @pytest.fixture
-def init_linter(linter: PyLinter) -> PyLinter:
+def initialized_linter(linter: PyLinter) -> PyLinter:
     linter.open()
-    linter.set_current_module("toto")
-    linter.file_state = FileState("toto")
+    linter.set_current_module("long_test_file", "long_test_file")
+    linter.file_state = FileState(
+        "long_test_file",
+        linter.msgs_store,
+        linter.get_ast(
+            str(join(REGRTEST_DATA_DIR, "long_test_file.py")), "long_test_file"
+        ),
+    )
     return linter
 
 
 def test_pylint_visit_method_taken_in_account(linter: PyLinter) -> None:
     class CustomChecker(checkers.BaseChecker):
-        __implements__ = interfaces.IAstroidChecker
         name = "custom"
         msgs = {"W9999": ("", "custom", "")}
 
-        @check_messages("custom")
+        @only_required_for_messages("custom")
         def visit_class(self, _):
             pass
 
@@ -273,8 +218,8 @@ def test_pylint_visit_method_taken_in_account(linter: PyLinter) -> None:
     linter.check(["abc"])
 
 
-def test_enable_message(init_linter: PyLinter) -> None:
-    linter = init_linter
+def test_enable_message(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
     assert linter.is_message_enabled("W0101")
     assert linter.is_message_enabled("W0102")
     linter.disable("W0101", scope="package")
@@ -290,8 +235,8 @@ def test_enable_message(init_linter: PyLinter) -> None:
     assert linter.is_message_enabled("W0102", 1)
 
 
-def test_enable_message_category(init_linter: PyLinter) -> None:
-    linter = init_linter
+def test_enable_message_category(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
     assert linter.is_message_enabled("W0101")
     assert linter.is_message_enabled("C0202")
     linter.disable("W", scope="package")
@@ -309,11 +254,11 @@ def test_enable_message_category(init_linter: PyLinter) -> None:
     assert linter.is_message_enabled("C0202", line=1)
 
 
-def test_message_state_scope(init_linter: PyLinter) -> None:
-    class FakeConfig:
+def test_message_state_scope(initialized_linter: PyLinter) -> None:
+    class FakeConfig(argparse.Namespace):
         confidence = ["HIGH"]
 
-    linter = init_linter
+    linter = initialized_linter
     linter.disable("C0202")
     assert MSG_STATE_SCOPE_CONFIG == linter._get_message_state_scope("C0202")
     linter.disable("W0101", scope="module", line=3)
@@ -327,15 +272,15 @@ def test_message_state_scope(init_linter: PyLinter) -> None:
     )
 
 
-def test_enable_message_block(init_linter: PyLinter) -> None:
-    linter = init_linter
+def test_enable_message_block(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
     linter.open()
     filepath = join(REGRTEST_DATA_DIR, "func_block_disable_msg.py")
     linter.set_current_module("func_block_disable_msg")
     astroid = linter.get_ast(filepath, "func_block_disable_msg")
+    linter.file_state = FileState("func_block_disable_msg", linter.msgs_store, astroid)
     linter.process_tokens(tokenize_module(astroid))
     fs = linter.file_state
-    fs.collect_block_lines(linter.msgs_store, astroid)
     # global (module level)
     assert linter.is_message_enabled("W0613")
     assert linter.is_message_enabled("E1101")
@@ -372,7 +317,6 @@ def test_enable_message_block(init_linter: PyLinter) -> None:
     assert linter.is_message_enabled("E1101", 75)
     assert linter.is_message_enabled("E1101", 77)
 
-    fs = linter.file_state
     assert fs._suppression_mapping["W0613", 18] == 17
     assert fs._suppression_mapping["E1101", 33] == 30
     assert ("E1101", 46) not in fs._suppression_mapping
@@ -385,12 +329,12 @@ def test_enable_message_block(init_linter: PyLinter) -> None:
     assert fs._suppression_mapping["E1101", 110] == 109
 
 
-def test_enable_by_symbol(init_linter: PyLinter) -> None:
-    """messages can be controlled by symbolic names.
+def test_enable_by_symbol(initialized_linter: PyLinter) -> None:
+    """Messages can be controlled by symbolic names.
 
     The state is consistent across symbols and numbers.
     """
-    linter = init_linter
+    linter = initialized_linter
     assert linter.is_message_enabled("W0101")
     assert linter.is_message_enabled("unreachable")
     assert linter.is_message_enabled("W0102")
@@ -430,11 +374,21 @@ def test_report_output_format_aliased(linter: PyLinter) -> None:
 
 def test_set_unsupported_reporter(linter: PyLinter) -> None:
     text.register(linter)
+    # ImportError
     with pytest.raises(exceptions.InvalidReporterError):
         linter.set_option("output-format", "missing.module.Class")
 
+    # AssertionError
+    with pytest.raises(exceptions.InvalidReporterError):
+        linter.set_option("output-format", "lint.unittest_lint._CustomPyLinter")
 
-def test_set_option_1(linter: PyLinter) -> None:
+    # AttributeError
+    with pytest.raises(exceptions.InvalidReporterError):
+        linter.set_option("output-format", "lint.unittest_lint.MyReporter")
+
+
+def test_set_option_1(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
     linter.set_option("disable", "C0111,W0234")
     assert not linter.is_message_enabled("C0111")
     assert not linter.is_message_enabled("W0234")
@@ -443,7 +397,8 @@ def test_set_option_1(linter: PyLinter) -> None:
     assert not linter.is_message_enabled("non-iterator-returned")
 
 
-def test_set_option_2(linter: PyLinter) -> None:
+def test_set_option_2(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
     linter.set_option("disable", ("C0111", "W0234"))
     assert not linter.is_message_enabled("C0111")
     assert not linter.is_message_enabled("W0234")
@@ -459,22 +414,25 @@ def test_enable_checkers(linter: PyLinter) -> None:
     assert "design" in [c.name for c in linter.prepare_checkers()]
 
 
-def test_errors_only(linter: PyLinter) -> None:
-    linter.error_mode()
+def test_errors_only(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
+    linter._error_mode = True
+    linter._parse_error_mode()
     checkers = linter.prepare_checkers()
     checker_names = {c.name for c in checkers}
     should_not = {"design", "format", "metrics", "miscellaneous", "similarities"}
     assert set() == should_not & checker_names
 
 
-def test_disable_similar(linter: PyLinter) -> None:
+def test_disable_similar(initialized_linter: PyLinter) -> None:
+    linter = initialized_linter
     linter.set_option("disable", "RP0801")
     linter.set_option("disable", "R0801")
     assert not ("similarities" in [c.name for c in linter.prepare_checkers()])
 
 
 def test_disable_alot(linter: PyLinter) -> None:
-    """check that we disabled a lot of checkers"""
+    """Check that we disabled a lot of checkers."""
     linter.set_option("reports", False)
     linter.set_option("disable", "R,C,W")
     checker_names = [c.name for c in linter.prepare_checkers()]
@@ -597,7 +555,7 @@ def test_load_plugin_configuration() -> None:
         ],
         exit=False,
     )
-    assert run.linter.config.black_list == ["foo", "bar", "bin"]
+    assert run.linter.config.ignore == ["foo", "bar", "bin"]
 
 
 def test_init_hooks_called_before_load_plugins() -> None:
@@ -605,6 +563,8 @@ def test_init_hooks_called_before_load_plugins() -> None:
         Run(["--load-plugins", "unexistant", "--init-hook", "raise RuntimeError"])
     with pytest.raises(RuntimeError):
         Run(["--init-hook", "raise RuntimeError", "--load-plugins", "unexistant"])
+    with pytest.raises(SystemExit):
+        Run(["--init-hook"])
 
 
 def test_analyze_explicit_script(linter: PyLinter) -> None:
@@ -640,7 +600,7 @@ def test_full_documentation(linter: PyLinter) -> None:
     output = out.getvalue()
     # A few spot checks only
     for re_str in (
-        # autogenerated text
+        # auto-generated text
         "^Pylint global options and switches$",
         "Verbatim name of the checker is ``variables``",
         # messages
@@ -652,8 +612,10 @@ def test_full_documentation(linter: PyLinter) -> None:
         assert re.search(regexp, output)
 
 
-def test_list_msgs_enabled(init_linter: PyLinter, capsys: CaptureFixture) -> None:
-    linter = init_linter
+def test_list_msgs_enabled(
+    initialized_linter: PyLinter, capsys: CaptureFixture
+) -> None:
+    linter = initialized_linter
     linter.enable("W0101", scope="package")
     linter.disable("W0102", scope="package")
     linter.list_messages_enabled()
@@ -687,13 +649,15 @@ def test_pylint_home() -> None:
     else:
         expected = platformdirs.user_cache_dir("pylint")
     assert config.PYLINT_HOME == expected
+    assert PYLINT_HOME == expected
 
+
+def test_pylint_home_from_environ() -> None:
     try:
         pylintd = join(tempfile.gettempdir(), OLD_DEFAULT_PYLINT_HOME)
         os.environ["PYLINTHOME"] = pylintd
         try:
-            reload(config)
-            assert config.PYLINT_HOME == pylintd
+            assert _get_pylint_home() == pylintd
         finally:
             try:
                 rmtree(pylintd)
@@ -703,17 +667,50 @@ def test_pylint_home() -> None:
         del os.environ["PYLINTHOME"]
 
 
+def test_warn_about_old_home(capsys: CaptureFixture) -> None:
+    """Test that we correctly warn about old_home."""
+    # Create old home
+    old_home = Path(USER_HOME) / OLD_DEFAULT_PYLINT_HOME
+    old_home.mkdir(parents=True, exist_ok=True)
+
+    # Create spam prevention file
+    ten_years_ago = datetime.datetime.now() - datetime.timedelta(weeks=520)
+    new_prevention_file = Path(PYLINT_HOME) / ten_years_ago.strftime(
+        "pylint_warned_about_old_cache_already_%Y-%m-%d.temp"
+    )
+    with open(new_prevention_file, "w", encoding="utf8") as f:
+        f.write("")
+
+    # Remove current prevention file
+    cur_prevention_file = Path(PYLINT_HOME) / datetime.datetime.now().strftime(
+        "pylint_warned_about_old_cache_already_%Y-%m-%d.temp"
+    )
+    if cur_prevention_file.exists():
+        os.remove(cur_prevention_file)
+
+    _warn_about_old_home(Path(PYLINT_HOME))
+
+    assert not new_prevention_file.exists()
+    assert cur_prevention_file.exists()
+
+    out = capsys.readouterr()
+    assert "PYLINTHOME is now" in out.err
+
+
 @pytest.mark.usefixtures("pop_pylintrc")
 def test_pylintrc() -> None:
     with fake_home():
         current_dir = getcwd()
         chdir(os.path.dirname(os.path.abspath(sys.executable)))
         try:
-            assert config.find_pylintrc() is None
+            with pytest.warns(DeprecationWarning):
+                assert config.find_pylintrc() is None
             os.environ["PYLINTRC"] = join(tempfile.gettempdir(), ".pylintrc")
-            assert config.find_pylintrc() is None
+            with pytest.warns(DeprecationWarning):
+                assert config.find_pylintrc() is None
             os.environ["PYLINTRC"] = "."
-            assert config.find_pylintrc() is None
+            with pytest.warns(DeprecationWarning):
+                assert config.find_pylintrc() is None
         finally:
             chdir(current_dir)
             reload(config)
@@ -734,7 +731,8 @@ def test_pylintrc_parentdir() -> None:
             ]
         )
         with fake_home():
-            assert config.find_pylintrc() is None
+            with pytest.warns(DeprecationWarning):
+                assert config.find_pylintrc() is None
         results = {
             "a": join(chroot, "a", "pylintrc"),
             "a/b": join(chroot, "a", "b", "pylintrc"),
@@ -744,7 +742,8 @@ def test_pylintrc_parentdir() -> None:
         }
         for basedir, expected in results.items():
             os.chdir(join(chroot, basedir))
-            assert config.find_pylintrc() == expected
+            with pytest.warns(DeprecationWarning):
+                assert config.find_pylintrc() == expected
 
 
 @pytest.mark.usefixtures("pop_pylintrc")
@@ -752,7 +751,8 @@ def test_pylintrc_parentdir_no_package() -> None:
     with tempdir() as chroot:
         with fake_home():
             create_files(["a/pylintrc", "a/b/pylintrc", "a/b/c/d/__init__.py"])
-            assert config.find_pylintrc() is None
+            with pytest.warns(DeprecationWarning):
+                assert config.find_pylintrc() is None
             results = {
                 "a": join(chroot, "a", "pylintrc"),
                 "a/b": join(chroot, "a", "b", "pylintrc"),
@@ -761,39 +761,8 @@ def test_pylintrc_parentdir_no_package() -> None:
             }
             for basedir, expected in results.items():
                 os.chdir(join(chroot, basedir))
-                assert config.find_pylintrc() == expected
-
-
-class TestPreprocessOptions:
-    def _callback(self, name: str, value: Optional[str]) -> None:
-        self.args.append((name, value))
-
-    def test_value_equal(self) -> None:
-        self.args: List[Tuple[str, Optional[str]]] = []
-        preprocess_options(
-            ["--foo", "--bar=baz", "--qu=ux"],
-            {"foo": (self._callback, False), "qu": (self._callback, True)},
-        )
-        assert [("foo", None), ("qu", "ux")] == self.args
-
-    def test_value_space(self) -> None:
-        self.args = []
-        preprocess_options(["--qu", "ux"], {"qu": (self._callback, True)})
-        assert [("qu", "ux")] == self.args
-
-    @staticmethod
-    def test_error_missing_expected_value() -> None:
-        with pytest.raises(ArgumentPreprocessingError):
-            preprocess_options(["--foo", "--bar", "--qu=ux"], {"bar": (None, True)})
-        with pytest.raises(ArgumentPreprocessingError):
-            preprocess_options(["--foo", "--bar"], {"bar": (None, True)})
-
-    @staticmethod
-    def test_error_unexpected_value() -> None:
-        with pytest.raises(ArgumentPreprocessingError):
-            preprocess_options(
-                ["--foo", "--bar=spam", "--qu=ux"], {"bar": (None, False)}
-            )
+                with pytest.warns(DeprecationWarning):
+                    assert config.find_pylintrc() == expected
 
 
 class _CustomPyLinter(PyLinter):
@@ -807,6 +776,7 @@ class _CustomPyLinter(PyLinter):
         )
 
 
+@pytest.mark.needs_two_cores
 def test_custom_should_analyze_file() -> None:
     """Check that we can write custom should_analyze_file that work
     even for arguments.
@@ -835,6 +805,7 @@ def test_custom_should_analyze_file() -> None:
 
 # we do the check with jobs=1 as well, so that we are sure that the duplicates
 # are created by the multiprocessing problem.
+@pytest.mark.needs_two_cores
 @pytest.mark.parametrize("jobs", [1, 2])
 def test_multiprocessing(jobs: int) -> None:
     """Check that multiprocessing does not create duplicates."""
@@ -865,12 +836,12 @@ def test_multiprocessing(jobs: int) -> None:
     assert len(messages) == len(set(messages))
 
 
-def test_filename_with__init__(init_linter: PyLinter) -> None:
+def test_filename_with__init__(initialized_linter: PyLinter) -> None:
     # This tracks a regression where a file whose name ends in __init__.py,
     # such as flycheck__init__.py, would accidentally lead to linting the
     # entire containing directory.
     reporter = testutils.GenericTestReporter()
-    linter = init_linter
+    linter = initialized_linter
     linter.open()
     linter.set_reporter(reporter)
     filepath = join(INPUT_DIR, "not__init__.py")
@@ -879,15 +850,15 @@ def test_filename_with__init__(init_linter: PyLinter) -> None:
     assert len(messages) == 0
 
 
-def test_by_module_statement_value(init_linter: PyLinter) -> None:
+def test_by_module_statement_value(initialized_linter: PyLinter) -> None:
     """Test "statement" for each module analyzed of computed correctly."""
-    linter = init_linter
+    linter = initialized_linter
     linter.check([os.path.join(os.path.dirname(__file__), "data")])
 
     by_module_stats = linter.stats.by_module
     for module, module_stats in by_module_stats.items():
 
-        linter2 = init_linter
+        linter2 = initialized_linter
         if module == "data":
             linter2.check([os.path.join(os.path.dirname(__file__), "data/__init__.py")])
         else:
@@ -896,3 +867,67 @@ def test_by_module_statement_value(init_linter: PyLinter) -> None:
         # Check that the by_module "statement" is equal to the global "statement"
         # computed for that module
         assert module_stats["statement"] == linter2.stats.statement
+
+
+@pytest.mark.parametrize(
+    "ignore_parameter,ignore_parameter_value",
+    [
+        ("--ignore", "failing.py"),
+        ("--ignore", "ignored_subdirectory"),
+        ("--ignore-patterns", "failing.*"),
+        ("--ignore-patterns", "ignored_*"),
+        ("--ignore-paths", ".*directory/ignored.*"),
+        ("--ignore-paths", ".*ignored.*/failing.*"),
+    ],
+)
+def test_recursive_ignore(ignore_parameter, ignore_parameter_value) -> None:
+    run = Run(
+        [
+            "--recursive",
+            "y",
+            ignore_parameter,
+            ignore_parameter_value,
+            join(REGRTEST_DATA_DIR, "directory"),
+        ],
+        exit=False,
+    )
+
+    linted_files = run.linter._iterate_file_descrs(
+        tuple(run.linter._discover_files([join(REGRTEST_DATA_DIR, "directory")]))
+    )
+    linted_file_paths = [file_item.filepath for file_item in linted_files]
+
+    ignored_file = os.path.abspath(
+        join(REGRTEST_DATA_DIR, "directory", "ignored_subdirectory", "failing.py")
+    )
+    assert ignored_file not in linted_file_paths
+
+    for regrtest_data_module in (
+        ("directory", "subdirectory", "subsubdirectory", "module.py"),
+        ("directory", "subdirectory", "module.py"),
+        ("directory", "package", "module.py"),
+        ("directory", "package", "subpackage", "module.py"),
+    ):
+        module = os.path.abspath(join(REGRTEST_DATA_DIR, *regrtest_data_module))
+    assert module in linted_file_paths
+
+
+def test_import_sibling_module_from_namespace(initialized_linter: PyLinter) -> None:
+    """If the parent directory above `namespace` is on sys.path, ensure that
+    modules under `namespace` can import each other without raising `import-error`."""
+    linter = initialized_linter
+    with tempdir() as tmpdir:
+        create_files(["namespace/submodule1.py", "namespace/submodule2.py"])
+        second_path = Path("namespace/submodule2.py")
+        with open(second_path, "w", encoding="utf-8") as f:
+            f.write(
+                """\"\"\"This module imports submodule1.\"\"\"
+import submodule1
+print(submodule1)
+"""
+            )
+        os.chdir("namespace")
+        # Add the parent directory to sys.path
+        with fix_import_path([tmpdir]):
+            linter.check(["submodule2.py"])
+    assert not linter.stats.by_msg

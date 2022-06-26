@@ -1,6 +1,6 @@
 """ Checks that reversed() receive proper argument """
 # pylint: disable=missing-docstring,invalid-name,unused-variable, useless-object-inheritance
-# pylint: disable=too-few-public-methods,no-self-use
+# pylint: disable=too-few-public-methods
 
 def test():
     def parent():
@@ -40,3 +40,17 @@ def func2():
         local = 1
 
     return local + nonlocal_
+
+
+def function():
+    """Test for `unused-variable` when multiple-assignment contains a `nonlocal`"""
+    myint, mylist = 0, []
+
+    print(mylist)
+
+    def inner():
+        nonlocal myint
+        mylist.append(myint)
+        myint += 1
+
+    return inner()
