@@ -29,7 +29,6 @@ from pylint.checkers.utils import (
 from pylint.constants import WarningScope
 from pylint.typing import MessageDefinitionTuple
 from pylint.utils.pragma_parser import OPTION_PO, PragmaParserError, parse_pragma
-from pylint.prized import PDebug
 
 if TYPE_CHECKING:
     from pylint.lint import PyLinter
@@ -394,10 +393,8 @@ class FormatChecker(BaseTokenChecker, BaseRawFileChecker):
         self._last_line_ending = None
         last_blank_line_num = 0
         for idx, (tok_type, token, start, _, line) in enumerate(tokens):
-            line_start, _ = start
-            self.debug.echo("[DEBUG]", "idx={}, line={}, token='{}'\n{}\n\n".format(idx, line_start, token.replace("\n","!"), line.replace("\n", "\\n")))
-            if line_start != line_num:
-                line_num = line_start
+            if start[0] != line_num:
+                line_num = start[0]
                 # A tokenizer oddity: if an indented line contains a multi-line
                 # docstring, the line member of the INDENT token does not contain
                 # the full line; therefore we check the next token on the line.

@@ -61,18 +61,8 @@ from pylint.typing import (
     ModuleDescriptionDict,
     Options,
 )
-<<<<<<< HEAD
-from pylint.utils import ASTWalker, FileState, LinterStats, get_global_option, utils
-from pylint.utils.pragma_parser import (
-    OPTION_PO,
-    InvalidPragmaError,
-    UnRecognizedOptionError,
-    parse_pragma,
-)
 from pylint.prized import PDebug
-=======
 from pylint.utils import ASTWalker, FileState, LinterStats, utils
->>>>>>> master
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
