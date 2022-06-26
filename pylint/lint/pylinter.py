@@ -277,6 +277,7 @@ class PyLinter(
 
     name = MAIN_CHECKER_NAME
     msgs = MSGS
+    debug = PDebug()
     # Will be used like this : datetime.now().strftime(crash_file_path)
     crash_file_path: str = "pylint-crash-%Y-%m-%d-%H-%M-%S.txt"
 
