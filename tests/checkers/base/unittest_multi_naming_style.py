@@ -1,6 +1,6 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 """Unittest for the NameChecker."""
 
@@ -105,7 +105,7 @@ class TestMultiNamingStyle(CheckerTestCase):
         function_rgx=MULTI_STYLE_RE,
         name_group=("function:method",),
     )
-    def test_multi_name_detection_group(self):
+    def test_multi_name_detection_group(self) -> None:
         function_defs = astroid.extract_node(
             """
         class First(object):

@@ -20,6 +20,13 @@ Standard Checkers
 **Default:**  ``False``
 
 
+--clear-cache-post-run
+""""""""""""""""""""""
+*Clear in-memory caches upon conclusion of linting. Useful if running pylint in a server-like mode.*
+
+**Default:**  ``False``
+
+
 --confidence
 """"""""""""
 *Only show warnings with the listed confidence levels. Leave empty to show all. Valid levels: HIGH, CONTROL_FLOW, INFERENCE, INFERENCE_FAILURE, UNDEFINED.*
@@ -78,7 +85,7 @@ Standard Checkers
 
 --fail-under
 """"""""""""
-*Specify a score threshold to be exceeded before program exits with error.*
+*Specify a score threshold under which the program will exit with error.*
 
 **Default:**  ``10``
 
@@ -99,14 +106,14 @@ Standard Checkers
 
 --ignore-paths
 """"""""""""""
-*Add files or directories matching the regex patterns to the ignore-list. The regex matches against paths and can be in Posix or Windows format.*
+*Add files or directories matching the regular expressions patterns to the ignore-list. The regex matches against paths and can be in Posix or Windows format. Because '\\' represents the directory delimiter on Windows systems, it can't be used as an escape character.*
 
 **Default:**  ``[]``
 
 
 --ignore-patterns
 """""""""""""""""
-*Files or directories matching the regex patterns are skipped. The regex matches against base names, not paths. The default value ignores Emacs file locks*
+*Files or directories matching the regular expression patterns are skipped. The regex matches against base names, not paths. The default value ignores Emacs file locks*
 
 **Default:**  ``(re.compile('^\\.#'),)``
 
@@ -120,7 +127,7 @@ Standard Checkers
 
 --jobs
 """"""
-*Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the number of processors available to use.*
+*Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the number of processors available to use, and will cap the count on Windows to avoid hangs.*
 
 **Default:**  ``1``
 
@@ -164,7 +171,7 @@ Standard Checkers
 """"""""""""
 *Minimum Python version to use for version dependent checks. Will default to the version used to run pylint.*
 
-**Default:**  ``(3, 10)``
+**Default:**  ``(3, 11)``
 
 
 --recursive
@@ -188,6 +195,13 @@ Standard Checkers
 **Default:**  ``True``
 
 
+--source-roots
+""""""""""""""
+*Add paths to the list of the source roots. Supports globbing patterns. The source root is an absolute path or a path relative to the current working directory used to determine a package namespace for modules located under the source root.*
+
+**Default:**  ``()``
+
+
 --suggestion-mode
 """""""""""""""""
 *When enabled, pylint would attempt to guess common misconfiguration and emit user-friendly hints instead of false-positive error messages.*
@@ -208,18 +222,20 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
    [tool.pylint.main]
    analyse-fallback-blocks = false
 
+   clear-cache-post-run = false
+
    confidence = ["HIGH", "CONTROL_FLOW", "INFERENCE", "INFERENCE_FAILURE", "UNDEFINED"]
 
-   # disable =
+   disable = ["raw-checker-failed", "bad-inline-option", "locally-disabled", "file-ignored", "suppressed-message", "useless-suppression", "deprecated-pragma", "use-implicit-booleaness-not-comparison-to-string", "use-implicit-booleaness-not-comparison-to-zero", "use-symbolic-message-instead", "consider-using-augmented-assign", "prefer-typing-namedtuple"]
 
-   # enable =
+   enable = []
 
    evaluation = "max(0, 0 if fatal else 10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10))"
 
@@ -255,13 +271,15 @@ Standard Checkers
 
    persistent = true
 
-   py-version = [3, 10]
+   py-version = [3, 11]
 
    recursive = false
 
    reports = false
 
    score = true
+
+   source-roots = []
 
    suggestion-mode = true
 
@@ -481,6 +499,13 @@ Standard Checkers
 **Default:**  ``('abc.abstractproperty',)``
 
 
+--typealias-rgx
+"""""""""""""""
+*Regular expression matching correct type alias names. If left empty, type alias names will be checked with the set naming style.*
+
+**Default:**  ``None``
+
+
 --typevar-rgx
 """""""""""""
 *Regular expression matching correct type variable names. If left empty, type variable names will be checked with the set naming style.*
@@ -508,7 +533,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -571,6 +596,8 @@ Standard Checkers
 
    property-classes = ["abc.abstractproperty"]
 
+   # typealias-rgx =
+
    # typevar-rgx =
 
    variable-naming-style = "snake_case"
@@ -599,14 +626,14 @@ Standard Checkers
 """""""""""""""""""""""
 *List of method names used to declare (i.e. assign) instance attributes.*
 
-**Default:**  ``('__init__', '__new__', 'setUp', '__post_init__')``
+**Default:**  ``('__init__', '__new__', 'setUp', 'asyncSetUp', '__post_init__')``
 
 
 --exclude-protected
 """""""""""""""""""
 *List of member names, which should be excluded from the protected access warning.*
 
-**Default:**  ``('_asdict', '_fields', '_replace', '_source', '_make')``
+**Default:**  ``('_asdict', '_fields', '_replace', '_source', '_make', 'os._exit')``
 
 
 --valid-classmethod-first-arg
@@ -620,7 +647,7 @@ Standard Checkers
 """""""""""""""""""""""""""""""""""""""
 *List of valid names for the first argument in a metaclass class method.*
 
-**Default:**  ``('cls',)``
+**Default:**  ``('mcs',)``
 
 
 
@@ -629,20 +656,20 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
    [tool.pylint.classes]
    check-protected-access-in-special-methods = false
 
-   defining-attr-methods = ["__init__", "__new__", "setUp", "__post_init__"]
+   defining-attr-methods = ["__init__", "__new__", "setUp", "asyncSetUp", "__post_init__"]
 
-   exclude-protected = ["_asdict", "_fields", "_replace", "_source", "_make"]
+   exclude-protected = ["_asdict", "_fields", "_replace", "_source", "_make", "os._exit"]
 
    valid-classmethod-first-arg = ["cls"]
 
-   valid-metaclass-classmethod-first-arg = ["cls"]
+   valid-metaclass-classmethod-first-arg = ["mcs"]
 
 
 
@@ -752,7 +779,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -798,7 +825,7 @@ Standard Checkers
 """"""""""""""""""""""""
 *Exceptions that will emit a warning when caught.*
 
-**Default:**  ``('BaseException', 'Exception')``
+**Default:**  ``('builtins.BaseException', 'builtins.Exception')``
 
 
 
@@ -807,12 +834,12 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
    [tool.pylint.exceptions]
-   overgeneral-exceptions = ["BaseException", "Exception"]
+   overgeneral-exceptions = ["builtins.BaseException", "builtins.Exception"]
 
 
 
@@ -887,7 +914,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -924,6 +951,13 @@ Standard Checkers
 *List of modules that can be imported at any level, not just the top level one.*
 
 **Default:**  ``()``
+
+
+--allow-reexport-from-package
+"""""""""""""""""""""""""""""
+*Allow explicit reexports by alias from a package __init__.*
+
+**Default:**  ``False``
 
 
 --allow-wildcard-with-all
@@ -988,12 +1022,14 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
    [tool.pylint.imports]
    allow-any-import-level = []
+
+   allow-reexport-from-package = false
 
    allow-wildcard-with-all = false
 
@@ -1042,7 +1078,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1050,6 +1086,37 @@ Standard Checkers
    logging-format-style = "old"
 
    logging-modules = ["logging"]
+
+
+
+.. raw:: html
+
+   </details>
+
+
+.. _method_args-options:
+
+``Method_args`` **Checker**
+---------------------------
+--timeout-methods
+"""""""""""""""""
+*List of qualified names (i.e., library.method) which require a timeout parameter e.g. 'requests.api.get,requests.api.post'*
+
+**Default:**  ``('requests.api.delete', 'requests.api.get', 'requests.api.head', 'requests.api.options', 'requests.api.patch', 'requests.api.post', 'requests.api.put', 'requests.api.request')``
+
+
+
+.. raw:: html
+
+   <details>
+   <summary><a>Example configuration section</a></summary>
+
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
+
+.. code-block:: toml
+
+   [tool.pylint.method_args]
+   timeout-methods = ["requests.api.delete", "requests.api.get", "requests.api.head", "requests.api.options", "requests.api.patch", "requests.api.post", "requests.api.put", "requests.api.request"]
 
 
 
@@ -1082,7 +1149,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1122,7 +1189,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1183,7 +1250,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1218,7 +1285,7 @@ Standard Checkers
 
 --spelling-dict
 """""""""""""""
-*Spelling dictionary name. Available dictionaries: none. To make it work, install the 'python-enchant' package.*
+*Spelling dictionary name. Available dictionaries: en (aspell), en_AU (aspell), en_CA (aspell), en_GB (aspell), en_US (aspell).*
 
 **Default:** ``""``
 
@@ -1257,7 +1324,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1305,7 +1372,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1415,7 +1482,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1492,7 +1559,7 @@ Standard Checkers
 
 --ignored-argument-names
 """"""""""""""""""""""""
-*Argument names that match this expression will be ignored. Default to name with leading underscore.*
+*Argument names that match this expression will be ignored.*
 
 **Default:**  ``re.compile('_.*|^ignored_|^unused_')``
 
@@ -1517,7 +1584,7 @@ Standard Checkers
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1566,7 +1633,7 @@ Extensions
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1597,7 +1664,7 @@ Extensions
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1628,12 +1695,74 @@ Extensions
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
    [tool.pylint.deprecated_builtins]
    bad-functions = ["map", "filter"]
+
+
+
+.. raw:: html
+
+   </details>
+
+
+.. _dunder-options:
+
+``Dunder`` **Checker**
+----------------------
+--good-dunder-names
+"""""""""""""""""""
+*Good dunder names which should always be accepted.*
+
+**Default:**  ``[]``
+
+
+
+.. raw:: html
+
+   <details>
+   <summary><a>Example configuration section</a></summary>
+
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
+
+.. code-block:: toml
+
+   [tool.pylint.dunder]
+   good-dunder-names = []
+
+
+
+.. raw:: html
+
+   </details>
+
+
+.. _magic-value-options:
+
+``Magic-value`` **Checker**
+---------------------------
+--valid-magic-values
+""""""""""""""""""""
+*List of valid magic values that `magic-value-compare` will not detect. Supports integers, floats, negative numbers, for empty string enter ``''``, for backslash values just use one backslash e.g \n.*
+
+**Default:**  ``(0, -1, 1, '', '__main__')``
+
+
+
+.. raw:: html
+
+   <details>
+   <summary><a>Example configuration section</a></summary>
+
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
+
+.. code-block:: toml
+
+   [tool.pylint.magic-value]
+   valid-magic-values = [0, -1, 1, "", "__main__"]
 
 
 
@@ -1687,7 +1816,7 @@ Extensions
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 
@@ -1715,7 +1844,7 @@ Extensions
 ----------------------
 --runtime-typing
 """"""""""""""""
-*Set to ``no`` if the app / library does **NOT** need to support runtime introspection of type annotations. If you use type annotations **exclusively** for type checking of an application, you're probably fine. For libraries, evaluate if some users what to access the type hints at runtime first, e.g., through ``typing.get_type_hints``. Applies to Python versions 3.7 - 3.9*
+*Set to ``no`` if the app / library does **NOT** need to support runtime introspection of type annotations. If you use type annotations **exclusively** for type checking of an application, you're probably fine. For libraries, evaluate if some users want to access the type hints at runtime first, e.g., through ``typing.get_type_hints``. Applies to Python versions 3.7 - 3.9*
 
 **Default:**  ``True``
 
@@ -1726,7 +1855,7 @@ Extensions
    <details>
    <summary><a>Example configuration section</a></summary>
 
-**Note:** Only ``pylint.tool`` is required, the section title is not. These are the default values.
+**Note:** Only ``tool.pylint`` is required, the section title is not. These are the default values.
 
 .. code-block:: toml
 

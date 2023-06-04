@@ -1,6 +1,6 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 """Checker mixin for deprecated functionality."""
 
@@ -189,10 +189,10 @@ class DeprecatedMixin(BaseChecker):
         # pylint: disable=unused-argument
         return ()
 
-    def check_deprecated_module(self, node: nodes.Import, mod_path: str) -> None:
+    def check_deprecated_module(self, node: nodes.Import, mod_path: str | None) -> None:
         """Checks if the module is deprecated."""
         for mod_name in self.deprecated_modules():
-            if mod_path == mod_name or mod_path.startswith(mod_name + "."):
+            if mod_path == mod_name or mod_path and mod_path.startswith(mod_name + "."):
                 self.add_message("deprecated-module", node=node, args=mod_path)
 
     def check_deprecated_method(self, node: nodes.Call, inferred: nodes.NodeNG) -> None:
@@ -213,16 +213,7 @@ class DeprecatedMixin(BaseChecker):
             # Not interested in other nodes.
             return
 
-        if hasattr(inferred.parent, "qname") and inferred.parent.qname():
-            # Handling the situation when deprecated function is
-            # alias to existing function.
-            qnames = {
-                inferred.qname(),
-                f"{inferred.parent.qname()}.{func_name}",
-                func_name,
-            }
-        else:
-            qnames = {inferred.qname(), func_name}
+        qnames = {inferred.qname(), func_name}
         if any(name in self.deprecated_methods() for name in qnames):
             self.add_message("deprecated-method", node=node, args=(func_name,))
             return

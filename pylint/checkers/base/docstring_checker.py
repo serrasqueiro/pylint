@@ -1,13 +1,13 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 """Docstring checker from the basic checker."""
 
 from __future__ import annotations
 
 import re
-import sys
+from typing import Literal
 
 import astroid
 from astroid import nodes
@@ -20,11 +20,6 @@ from pylint.checkers.utils import (
     is_property_deleter,
     is_property_setter,
 )
-
-if sys.version_info >= (3, 8):
-    from typing import Literal
-else:
-    from typing_extensions import Literal
 
 # do not require a doc string on private/system methods
 NO_REQUIRED_DOC_RGX = re.compile("^_")
@@ -108,16 +103,16 @@ class DocStringChecker(_BasicChecker):
     def open(self) -> None:
         self.linter.stats.reset_undocumented()
 
-    @utils.only_required_for_messages("missing-docstring", "empty-docstring")
+    @utils.only_required_for_messages("missing-module-docstring", "empty-docstring")
     def visit_module(self, node: nodes.Module) -> None:
         self._check_docstring("module", node)
 
-    @utils.only_required_for_messages("missing-docstring", "empty-docstring")
+    @utils.only_required_for_messages("missing-class-docstring", "empty-docstring")
     def visit_classdef(self, node: nodes.ClassDef) -> None:
         if self.linter.config.no_docstring_rgx.match(node.name) is None:
             self._check_docstring("class", node)
 
-    @utils.only_required_for_messages("missing-docstring", "empty-docstring")
+    @utils.only_required_for_messages("missing-function-docstring", "empty-docstring")
     def visit_functiondef(self, node: nodes.FunctionDef) -> None:
         if self.linter.config.no_docstring_rgx.match(node.name) is None:
             ftype = "method" if node.is_method() else "function"

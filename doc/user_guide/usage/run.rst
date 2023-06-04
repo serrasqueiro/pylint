@@ -9,22 +9,24 @@ Pylint is meant to be called from the command line. The usage is ::
 
    pylint [options] modules_or_packages
 
-By default the ``pylint`` command only accepts a list of python modules and packages. Using a
-directory which is not a package results in an error::
+By default the ``pylint`` command only accepts a list of python modules and packages.
+On versions below 2.15, specifying a directory that is not an explicit package
+(with ``__init__.py``) results in an error::
 
     pylint mydir
     ************* Module mydir
     mydir/__init__.py:1:0: F0010: error while code parsing: Unable to load file mydir/__init__.py:
     [Errno 2] No such file or directory: 'mydir/__init__.py' (parse-error)
 
-When ``--recursive=y`` option is used, modules and packages are also accepted as parameters::
+Thus, on versions before 2.15, or when dealing with certain edge cases that have not yet been solved,
+using the ``--recursive=y`` option allows for linting a namespace package::
 
     pylint --recursive=y mydir mymodule mypackage
 
 This option makes ``pylint`` attempt to discover all modules (files ending with ``.py`` extension)
-and all packages (all directories containing a ``__init__.py`` file).
+and all explicit packages (all directories containing a ``__init__.py`` file).
 
-Pylint **will not import** this package or module, though uses Python internals
+Pylint **will not import** this package or module, but it does use Python internals
 to locate them and as such is subject to the same rules and configuration.
 You should pay attention to your ``PYTHONPATH``, since it is a common error
 to analyze an installed version of a module instead of the development version.
@@ -42,6 +44,20 @@ directory is automatically added on top of the python path
 ``pylint directory/mymodule.py`` will work if: ``directory`` is a python
 package (i.e. has an ``__init__.py`` file), an implicit namespace package
 or if ``directory`` is in the python path.
+
+With implicit namespace packages
+--------------------------------
+
+If the analyzed sources use implicit namespace packages (PEP 420), the source root(s) should
+be specified using the ``--source-roots`` option. Otherwise, the package names are
+detected incorrectly, since implicit namespace packages don't contain an ``__init__.py``.
+
+Globbing support
+----------------
+
+It is also possible to specify both directories and files using globbing patterns::
+
+   pylint [options] packages/*/src
 
 Command line options
 --------------------
@@ -87,6 +103,11 @@ configuration file in the following order and uses the first one it finds:
    in on the command line.
 #. ``setup.cfg`` in the current working directory,
    providing it has at least one ``pylint.`` section
+#. ``tox.ini`` in the current working directory,
+   providing it has at least one ``pylint.`` section
+#. Pylint will search for the ``pyproject.toml`` file up the directories hierarchy
+   unless it's found, or a ``.git``/``.hg`` directory is found, or the file system root
+   is approached.
 #. If the current working directory is in a Python package, Pylint searches \
    up the hierarchy of Python packages until it finds a ``pylintrc`` file. \
    This allows you to specify coding standards on a module-by-module \
@@ -139,10 +160,10 @@ This will spawn 4 parallel Pylint sub-process, where each provided module will
 be checked in parallel. Discovered problems by checkers are not displayed
 immediately. They are shown just after checking a module is complete.
 
-There are some limitations in running checks in parallel in the current
-implementation. It is not possible to use custom plugins
-(i.e. ``--load-plugins`` option), nor it is not possible to use
-initialization hooks (i.e. the ``--init-hook`` option).
+There is one known limitation with running checks in parallel as currently
+implemented. Since the division of files into worker processes is indeterminate,
+checkers that depend on comparing multiple files (e.g. ``cyclic-import``
+and ``duplicate-code``) can produce indeterminate results.
 
 Exit codes
 ----------

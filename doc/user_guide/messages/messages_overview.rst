@@ -56,7 +56,7 @@ All messages in the error category:
    error/await-outside-async
    error/bad-configuration-section
    error/bad-except-order
-   error/bad-exception-context
+   error/bad-exception-cause
    error/bad-format-character
    error/bad-plugin-value
    error/bad-reversed-sequence
@@ -91,6 +91,7 @@ All messages in the error category:
    error/invalid-class-object
    error/invalid-enum-extension
    error/invalid-envvar-value
+   error/invalid-field-call
    error/invalid-format-returned
    error/invalid-getnewargs-ex-returned
    error/invalid-getnewargs-returned
@@ -102,6 +103,7 @@ All messages in the error category:
    error/invalid-repr-returned
    error/invalid-sequence-index
    error/invalid-slice-index
+   error/invalid-slice-step
    error/invalid-slots
    error/invalid-slots-object
    error/invalid-star-assignment-target
@@ -136,6 +138,7 @@ All messages in the error category:
    error/not-context-manager
    error/not-in-loop
    error/notimplemented-raised
+   error/positional-only-arguments-expected
    error/potential-index-error
    error/raising-bad-type
    error/raising-non-exception
@@ -145,6 +148,8 @@ All messages in the error category:
    error/return-arg-in-generator
    error/return-in-init
    error/return-outside-function
+   error/singledispatch-method
+   error/singledispatchmethod-function
    error/star-needs-assignment-target
    error/syntax-error
    error/too-few-format-args
@@ -156,7 +161,7 @@ All messages in the error category:
    error/undefined-variable
    error/unexpected-keyword-arg
    error/unexpected-special-method-signature
-   error/unhashable-dict-key
+   error/unhashable-member
    error/unpacking-non-sequence
    error/unrecognized-inline-option
    error/unrecognized-option
@@ -177,10 +182,12 @@ All renamed messages in the error category:
    :titlesonly:
 
    error/bad-context-manager
+   error/bad-exception-context
    error/bad-option-value
    error/maybe-no-member
    error/old-non-iterator-returned-2
    error/old-unbalanced-tuple-unpacking
+   error/unhashable-dict-key
 
 .. _warning-category:
 
@@ -203,6 +210,8 @@ All messages in the warning category:
    warning/assert-on-tuple
    warning/attribute-defined-outside-init
    warning/bad-builtin
+   warning/bad-chained-comparison
+   warning/bad-dunder-name
    warning/bad-format-string
    warning/bad-format-string-key
    warning/bad-indentation
@@ -212,7 +221,8 @@ All messages in the warning category:
    warning/bare-except
    warning/binary-op-exception
    warning/boolean-datetime
-   warning/broad-except
+   warning/broad-exception-caught
+   warning/broad-exception-raised
    warning/cell-var-from-loop
    warning/comparison-with-callable
    warning/confusing-with-statement
@@ -243,6 +253,7 @@ All messages in the warning category:
    warning/global-statement
    warning/global-variable-not-assigned
    warning/global-variable-undefined
+   warning/implicit-flag-alias
    warning/implicit-str-concat
    warning/import-self
    warning/inconsistent-quotes
@@ -251,6 +262,7 @@ All messages in the warning category:
    warning/invalid-overridden-method
    warning/isinstance-second-argument-not-valid-type
    warning/keyword-arg-before-vararg
+   warning/kwarg-superseded-by-positional-arg
    warning/logging-format-interpolation
    warning/logging-fstring-interpolation
    warning/logging-not-lazy
@@ -265,17 +277,21 @@ All messages in the warning category:
    warning/missing-raises-doc
    warning/missing-return-doc
    warning/missing-return-type-doc
+   warning/missing-timeout
    warning/missing-type-doc
    warning/missing-yield-doc
    warning/missing-yield-type-doc
    warning/modified-iterating-list
    warning/multiple-constructor-doc
+   warning/named-expr-without-context
    warning/nan-comparison
+   warning/nested-min-max
    warning/non-ascii-file-name
    warning/non-parent-init-called
    warning/non-str-assignment-to-dunder-name
    warning/overlapping-except
    warning/overridden-final-method
+   warning/pointless-exception-statement
    warning/pointless-statement
    warning/pointless-string-statement
    warning/possibly-unused-variable
@@ -295,6 +311,7 @@ All messages in the warning category:
    warning/reimported
    warning/self-assigning-variable
    warning/self-cls-assignment
+   warning/shadowed-import
    warning/shallow-copy-environ
    warning/signature-differs
    warning/subclassed-final-class
@@ -304,6 +321,7 @@ All messages in the warning category:
    warning/super-without-brackets
    warning/too-many-try-statements
    warning/try-except-raise
+   warning/unbalanced-dict-unpacking
    warning/unbalanced-tuple-unpacking
    warning/undefined-loop-variable
    warning/unknown-option-value
@@ -322,7 +340,7 @@ All messages in the warning category:
    warning/unused-wildcard-import
    warning/useless-else-on-loop
    warning/useless-param-doc
-   warning/useless-super-delegation
+   warning/useless-parent-delegation
    warning/useless-type-doc
    warning/useless-with-lock
    warning/using-constant-test
@@ -338,10 +356,16 @@ All renamed messages in the warning category:
    :maxdepth: 1
    :titlesonly:
 
+   warning/broad-except
    warning/cache-max-size-none
    warning/implicit-str-concat-in-sequence
    warning/lru-cache-decorating-method
    warning/old-assignment-from-none
+   warning/old-deprecated-argument
+   warning/old-deprecated-class
+   warning/old-deprecated-decorator
+   warning/old-deprecated-method
+   warning/old-deprecated-module
    warning/old-empty-docstring
    warning/old-missing-param-doc
    warning/old-missing-returns-doc
@@ -350,6 +374,7 @@ All renamed messages in the warning category:
    warning/old-non-iterator-returned-1
    warning/old-unidiomatic-typecheck
    warning/old-unpacking-non-sequence
+   warning/useless-super-delegation
 
 .. _convention-category:
 
@@ -367,13 +392,12 @@ All messages in the convention category:
    convention/bad-file-encoding
    convention/bad-mcs-classmethod-argument
    convention/bad-mcs-method-argument
-   convention/compare-to-empty-string
-   convention/compare-to-zero
    convention/consider-iterating-dictionary
    convention/consider-using-any-or-all
    convention/consider-using-dict-items
    convention/consider-using-enumerate
    convention/consider-using-f-string
+   convention/dict-init-mutate
    convention/disallowed-name
    convention/docstring-first-line-empty
    convention/empty-docstring
@@ -409,6 +433,8 @@ All messages in the convention category:
    convention/unnecessary-lambda-assignment
    convention/unneeded-not
    convention/use-implicit-booleaness-not-comparison
+   convention/use-implicit-booleaness-not-comparison-to-string
+   convention/use-implicit-booleaness-not-comparison-to-zero
    convention/use-implicit-booleaness-not-len
    convention/use-maxsplit-arg
    convention/use-sequence-for-iteration
@@ -425,6 +451,8 @@ All renamed messages in the convention category:
    :titlesonly:
 
    convention/blacklisted-name
+   convention/compare-to-empty-string
+   convention/compare-to-zero
    convention/len-as-condition
    convention/missing-docstring
    convention/old-misplaced-comparison-constant
@@ -448,9 +476,11 @@ All messages in the refactor category:
    refactor/confusing-consecutive-elif
    refactor/consider-alternative-union-syntax
    refactor/consider-merging-isinstance
+   refactor/consider-refactoring-into-while-condition
    refactor/consider-swap-variables
    refactor/consider-using-alias
    refactor/consider-using-assignment-expr
+   refactor/consider-using-augmented-assign
    refactor/consider-using-dict-comprehension
    refactor/consider-using-from-import
    refactor/consider-using-generator
@@ -471,6 +501,7 @@ All messages in the refactor category:
    refactor/empty-comment
    refactor/inconsistent-return-statements
    refactor/literal-comparison
+   refactor/magic-value-comparison
    refactor/no-classmethod-decorator
    refactor/no-else-break
    refactor/no-else-continue
@@ -478,9 +509,11 @@ All messages in the refactor category:
    refactor/no-else-return
    refactor/no-self-use
    refactor/no-staticmethod-decorator
+   refactor/prefer-typing-namedtuple
    refactor/property-with-parameters
    refactor/redefined-argument-from-local
    refactor/redefined-variable-type
+   refactor/redundant-typehint-argument
    refactor/simplifiable-condition
    refactor/simplifiable-if-expression
    refactor/simplifiable-if-statement

@@ -1,6 +1,6 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 """Utility methods for docstring checking."""
 
@@ -10,7 +10,7 @@ import re
 
 import astroid
 from astroid import nodes
-from astroid.util import Uninferable
+from astroid.util import UninferableBase
 
 from pylint.checkers import utils
 
@@ -43,7 +43,7 @@ def get_setters_property_name(node: nodes.FunctionDef) -> str | None:
             and decorator.attrname == "setter"
             and isinstance(decorator.expr, nodes.Name)
         ):
-            return decorator.expr.name
+            return decorator.expr.name  # type: ignore[no-any-return]
     return None
 
 
@@ -89,7 +89,7 @@ def returns_something(return_node: nodes.Return) -> bool:
     return not (isinstance(returns, nodes.Const) and returns.value is None)
 
 
-def _get_raise_target(node: nodes.NodeNG) -> nodes.NodeNG | Uninferable | None:
+def _get_raise_target(node: nodes.NodeNG) -> nodes.NodeNG | UninferableBase | None:
     if isinstance(node.exc, nodes.Call):
         func = node.exc.func
         if isinstance(func, (nodes.Name, nodes.Attribute)):
@@ -126,7 +126,7 @@ def possible_exc_types(node: nodes.NodeNG) -> set[nodes.ClassDef]:
         if handler and handler.type:
             try:
                 for exception in astroid.unpack_infer(handler.type):
-                    if exception is not astroid.Uninferable:
+                    if not isinstance(exception, UninferableBase):
                         exceptions.append(exception)
             except astroid.InferenceError:
                 pass
@@ -247,7 +247,7 @@ class SphinxDocstring(Docstring):
 
     re_multiple_simple_type = r"""
         (?:{container_type}|{type})
-        (?:(?:\s+(?:of|or)\s+|\s*,\s*)(?:{container_type}|{type}))*
+        (?:(?:\s+(?:of|or)\s+|\s*,\s*|\s+\|\s+)(?:{container_type}|{type}))*
     """.format(
         type=re_type, container_type=re_simple_container_type
     )
@@ -449,7 +449,7 @@ class GoogleDocstring(Docstring):
 
     re_multiple_type = r"""
         (?:{container_type}|{type}|{xref})
-        (?:(?:\s+(?:of|or)\s+|\s*,\s*)(?:{container_type}|{type}|{xref}))*
+        (?:(?:\s+(?:of|or)\s+|\s*,\s*|\s+\|\s+)(?:{container_type}|{type}|{xref}))*
     """.format(
         type=re_type, xref=re_xref, container_type=re_container_type
     )
@@ -471,7 +471,7 @@ class GoogleDocstring(Docstring):
 
     re_param_line = re.compile(
         rf"""
-        \s*  ((?:\\?\*{{0,2}})?\w+)     # identifier potentially with asterisks
+        \s*  ((?:\\?\*{{0,2}})?[\w\\]+) # identifier potentially with asterisks or escaped `\`
         \s*  ( [(]
             {re_multiple_type}
             (?:,\s+optional)?
@@ -728,11 +728,25 @@ class NumpyDocstring(GoogleDocstring):
         re.X | re.S | re.M,
     )
 
+    re_default_value = r"""((['"]\w+\s*['"])|(\d+)|(True)|(False)|(None))"""
+
     re_param_line = re.compile(
         rf"""
-        \s*  (\*{{0,2}}\w+)(\s?(:|\n))                                      # identifier with potential asterisks
-        \s*  (?:({GoogleDocstring.re_multiple_type})(?:,\s+optional)?\n)?   # optional type declaration
-        \s* (.*)                                                            # optional description
+        \s*  (?P<param_name>\*{{0,2}}\w+)(\s?(:|\n)) # identifier with potential asterisks
+        \s*
+        (?P<param_type>
+         (
+          ({GoogleDocstring.re_multiple_type})      # default type declaration
+          (,\s+optional)?                           # optional 'optional' indication
+         )?
+         (
+          {{({re_default_value},?\s*)+}}            # set of default values
+         )?
+         (?:$|\n)
+        )?
+        (
+         \s* (?P<param_desc>.*)                     # optional description
+        )?
     """,
         re.X | re.S,
     )
@@ -783,15 +797,26 @@ class NumpyDocstring(GoogleDocstring):
                 continue
 
             # check if parameter has description only
-            re_only_desc = re.match(r"\s*  (\*{0,2}\w+)\s*:?\n", entry)
+            re_only_desc = re.match(r"\s*(\*{0,2}\w+)\s*:?\n\s*\w*$", entry)
             if re_only_desc:
-                param_name = match.group(1)
-                param_desc = match.group(2)
+                param_name = match.group("param_name")
+                param_desc = match.group("param_type")
                 param_type = None
             else:
-                param_name = match.group(1)
-                param_type = match.group(3)
-                param_desc = match.group(4)
+                param_name = match.group("param_name")
+                param_type = match.group("param_type")
+                param_desc = match.group("param_desc")
+                # The re_param_line pattern needs to match multi-line which removes the ability
+                # to match a single line description like 'arg : a number type.'
+                # We are not trying to determine whether 'a number type' is correct typing
+                # but we do accept it as typing as it is in the place where typing
+                # should be
+                if param_type is None and re.match(r"\s*(\*{0,2}\w+)\s*:.+$", entry):
+                    param_type = param_desc
+                # If the description is "" but we have a type description
+                # we consider the description to be the type
+                if not param_desc and param_type:
+                    param_desc = param_type
 
             if param_type:
                 params_with_type.add(param_name)

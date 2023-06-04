@@ -1,6 +1,6 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 """Functional/non regression tests for pylint."""
 
@@ -14,20 +14,24 @@ import pytest
 
 from pylint.testutils import UPDATE_FILE, UPDATE_OPTION, _get_tests_info, linter
 from pylint.testutils.reporter_for_tests import GenericTestReporter
+from pylint.testutils.utils import _test_cwd
 
-INPUT_DIR = join(dirname(abspath(__file__)), "input")
-MSG_DIR = join(dirname(abspath(__file__)), "messages")
+TESTS_DIR = dirname(abspath(__file__))
+INPUT_DIR = join(TESTS_DIR, "input")
+MSG_DIR = join(TESTS_DIR, "messages")
 
 
 FILTER_RGX = None
 INFO_TEST_RGX = re.compile(r"^func_i\d\d\d\d$")
 
 
-def exception_str(self, ex) -> str:  # pylint: disable=unused-argument
+def exception_str(
+    self: Exception, ex: Exception  # pylint: disable=unused-argument
+) -> str:
     """Function used to replace default __str__ method of exception instances
     This function is not typed because it is legacy code
     """
-    return f"in {ex.file}\n:: {', '.join(ex.args)}"
+    return f"in {ex.file}\n:: {', '.join(ex.args)}"  # type: ignore[attr-defined] # Defined in the caller
 
 
 class LintTestUsingModule:
@@ -46,7 +50,11 @@ class LintTestUsingModule:
             tocheck += [
                 self.package + f".{name.replace('.py', '')}" for name, _ in self.depends
             ]
-        self._test(tocheck)
+        # given that TESTS_DIR could be treated as a namespace package
+        # when under the current directory, cd to it so that "tests." is not
+        # prepended to module names in the output of cyclic-import
+        with _test_cwd(TESTS_DIR):
+            self._test(tocheck)
 
     def _check_result(self, got: str) -> None:
         error_msg = (
@@ -64,10 +72,12 @@ class LintTestUsingModule:
         try:
             self.linter.check(tocheck)
         except Exception as ex:
-            print(f"Exception: {ex} in {tocheck}:: {'‚ '.join(ex.args)}")
-            ex.file = tocheck  # type: ignore[attr-defined] # This is legacy code we're trying to remove, not worth it to type correctly
+            print(f"Exception: {ex} in {tocheck}:: {', '.join(ex.args)}")
+            # This is legacy code we're trying to remove, not worth it to type correctly
+            ex.file = tocheck  # type: ignore[attr-defined]
             print(ex)
-            ex.__str__ = exception_str  # type: ignore[assignment] # This is legacy code we're trying to remove, impossible to type correctly
+            # This is legacy code we're trying to remove, not worth it to type correctly
+            ex.__str__ = exception_str  # type: ignore[assignment]
             raise
         assert isinstance(self.linter.reporter, GenericTestReporter)
         self._check_result(self.linter.reporter.finalize())
@@ -86,7 +96,7 @@ class LintTestUsingModule:
 
 
 class LintTestUpdate(LintTestUsingModule):
-    def _check_result(self, got):
+    def _check_result(self, got: str) -> None:
         if not self._has_output():
             return
         try:
@@ -94,18 +104,20 @@ class LintTestUpdate(LintTestUsingModule):
         except OSError:
             expected = ""
         if got != expected:
-            with open(self.output, "w", encoding="utf-8") as f:
+            with open(self.output or "", "w", encoding="utf-8") as f:
                 f.write(got)
 
 
-def gen_tests(filter_rgx):
+def gen_tests(
+    filter_rgx: str | re.Pattern[str] | None,
+) -> list[tuple[str, str, list[tuple[str, str]]]]:
     if filter_rgx:
         is_to_run = re.compile(filter_rgx).search
     else:
-        is_to_run = (
-            lambda x: 1  # pylint: disable=unnecessary-lambda-assignment
-        )  # noqa: E731 We're going to throw all this anyway
-    tests = []
+        is_to_run = (  # noqa: E731, We're going to throw all this anyway
+            lambda x: 1  # type: ignore[assignment] # pylint: disable=unnecessary-lambda-assignment
+        )
+    tests: list[tuple[str, str, list[tuple[str, str]]]] = []
     for module_file, messages_file in _get_tests_info(INPUT_DIR, MSG_DIR, "func_", ""):
         if not is_to_run(module_file) or module_file.endswith((".pyc", "$py.class")):
             continue
@@ -129,7 +141,10 @@ TEST_WITH_EXPECTED_DEPRECATION = ["func_excess_escapes.py"]
     ids=[o[0] for o in gen_tests(FILTER_RGX)],
 )
 def test_functionality(
-    module_file, messages_file, dependencies, recwarn: pytest.WarningsRecorder
+    module_file: str,
+    messages_file: str,
+    dependencies: list[tuple[str, str]],
+    recwarn: pytest.WarningsRecorder,
 ) -> None:
     __test_functionality(module_file, messages_file, dependencies)
     if recwarn.list:

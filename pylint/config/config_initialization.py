@@ -1,10 +1,13 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 from __future__ import annotations
 
 import sys
+import warnings
+from glob import glob
+from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -72,6 +75,12 @@ def _config_initialization(
     # the configuration file
     parsed_args_list = linter._parse_command_line_configuration(args_list)
 
+    # Remove the positional arguments separator from the list of arguments if it exists
+    try:
+        parsed_args_list.remove("--")
+    except ValueError:
+        pass
+
     # Check if there are any options that we do not recognize
     unrecognized_options: list[str] = []
     for opt in parsed_args_list:
@@ -81,7 +90,10 @@ def _config_initialization(
             unrecognized_options.append(opt[1:])
     if unrecognized_options:
         msg = ", ".join(unrecognized_options)
-        linter._arg_parser.error(f"Unrecognized option found: {msg}")
+        try:
+            linter._arg_parser.error(f"Unrecognized option found: {msg}")
+        except SystemExit:
+            sys.exit(32)
 
     # Now that config file and command line options have been loaded
     # with all disables, it is safe to emit messages
@@ -90,6 +102,19 @@ def _config_initialization(
         linter.add_message(
             "unrecognized-option", args=unrecognized_options_message, line=0
         )
+
+    # TODO 3.1: Change this to emit unknown-option-value
+    for exc_name in linter.config.overgeneral_exceptions:
+        if "." not in exc_name:
+            warnings.warn_explicit(
+                f"'{exc_name}' is not a proper value for the 'overgeneral-exceptions' option. "
+                f"Use fully qualified name (maybe 'builtins.{exc_name}' ?) instead. "
+                "This will cease to be checked at runtime in 3.1.0.",
+                category=UserWarning,
+                filename="pylint: Command line or configuration file",
+                lineno=1,
+                module="pylint",
+            )
 
     linter._emit_stashed_messages()
 
@@ -101,7 +126,8 @@ def _config_initialization(
     # load plugin specific configuration.
     linter.load_plugin_configuration()
 
-    # Now that plugins are loaded, get list of all fail_on messages, and enable them
+    # Now that plugins are loaded, get list of all fail_on messages, and
+    # enable them
     linter.enable_fail_on_messages()
 
     linter._parse_error_mode()
@@ -109,6 +135,15 @@ def _config_initialization(
     # Link the base Namespace object on the current directory
     linter._directory_namespaces[Path(".").resolve()] = (linter.config, {})
 
-    # parsed_args_list should now only be a list of files/directories to lint.
+    # parsed_args_list should now only be a list of inputs to lint.
     # All other options have been removed from the list.
-    return parsed_args_list
+    return list(
+        chain.from_iterable(
+            # NOTE: 'or [arg]' is needed in the case the input file or directory does
+            # not exist and 'glob(arg)' cannot find anything. Without this we would
+            # not be able to output the fatal import error for this module later on,
+            # as it would get silently ignored.
+            glob(arg, recursive=True) or [arg]
+            for arg in parsed_args_list
+        )
+    )

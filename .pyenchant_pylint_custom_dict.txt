@@ -21,6 +21,7 @@ async
 asynccontextmanager
 attr
 attrib
+attrname
 backport
 BaseChecker
 basename
@@ -31,6 +32,7 @@ bla
 bom
 bool
 boolean
+booleaness
 boolop
 boundmethod
 builtins
@@ -49,6 +51,7 @@ classmethod
 classmethod's
 classname
 classobj
+CLI
 cls
 cmp
 codebase
@@ -70,12 +73,16 @@ CVE
 cwd
 cyclomatic
 dataclass
+dataclasses
 datetime
 debian
+deduplication
 deepcopy
+defaultdicts
 defframe
 defstmts
 deleter
+dependabot
 deque
 destructured
 destructuring
@@ -103,6 +110,7 @@ epytext
 erroring
 etree
 expr
+falsey
 favour
 filepath
 filestream
@@ -122,9 +130,11 @@ functools
 genexpr
 getattr
 globals
+globbing
 GPL
 graphname
 graphviz
+grey
 guido's
 gv
 hashable
@@ -210,6 +220,7 @@ mymodule
 mypy
 namedtuple
 namespace
+newsfile
 newstyle
 nl
 nodename
@@ -235,6 +246,7 @@ params
 paren
 parens
 passthru
+pathlib
 positionals
 png
 pragma
@@ -242,6 +254,7 @@ pragma's
 pragmas
 pre
 preorder
+prepended
 proc
 py
 pyenchant
@@ -250,6 +263,7 @@ pylint
 pylintdict
 pylintrc
 pylint's
+pyproject
 pypy
 pyreverse
 pytest
@@ -273,10 +287,12 @@ rstrip
 rtype
 runtime
 se
+seaborn
 sep
 setcomp
 shortstrings
 singledispatch
+singledispatchmethod
 spammy
 sqlalchemy
 src
@@ -294,6 +310,8 @@ subcommands
 subdicts
 subgraphs
 sublists
+submodule
+submodules
 subparsers
 subparts
 subprocess
@@ -303,6 +321,8 @@ subtree
 supcls
 superclass
 symilar
+symlink
+symlinks
 sys
 tbump
 tempfile
@@ -317,8 +337,11 @@ tokenizer
 toml
 tomlkit
 toplevel
+towncrier
 tp
 truthness
+truthy
+truthey
 tryexcept
 txt
 typecheck
@@ -336,6 +359,7 @@ unicode
 Uninferable
 uninferable
 unittest
+untriggered
 # prefix for string
 ur
 ureport
@@ -352,6 +376,7 @@ vcg's
 vectorisation
 virtualized
 wc
+whitespaces
 xfails
 xml
 xyz

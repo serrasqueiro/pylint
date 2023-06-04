@@ -1,6 +1,6 @@
 # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# For details: https://github.com/PyCQA/pylint/blob/main/LICENSE
-# Copyright (c) https://github.com/PyCQA/pylint/blob/main/CONTRIBUTORS.txt
+# For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+# Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
 
 """Functions that creates the basic options for the Run and PyLinter classes."""
 
@@ -56,7 +56,7 @@ def _make_linter_options(linter: PyLinter) -> Options:
                 "metavar": "<pattern>[,<pattern>...]",
                 "dest": "black_list_re",
                 "default": (re.compile(r"^\.#"),),
-                "help": "Files or directories matching the regex patterns are"
+                "help": "Files or directories matching the regular expression patterns are"
                 " skipped. The regex matches against base names, not paths. The default value "
                 "ignores Emacs file locks",
             },
@@ -67,9 +67,10 @@ def _make_linter_options(linter: PyLinter) -> Options:
                 "type": "regexp_paths_csv",
                 "metavar": "<pattern>[,<pattern>...]",
                 "default": [],
-                "help": "Add files or directories matching the regex patterns to the "
+                "help": "Add files or directories matching the regular expressions patterns to the "
                 "ignore-list. The regex matches against paths and can be in "
-                "Posix or Windows format.",
+                "Posix or Windows format. Because '\\\\' represents the directory delimiter "
+                "on Windows systems, it can't be used as an escape character.",
             },
         ),
         (
@@ -154,7 +155,7 @@ def _make_linter_options(linter: PyLinter) -> Options:
                 "default": 10,
                 "type": "float",
                 "metavar": "<score>",
-                "help": "Specify a score threshold to be exceeded before program exits with error.",
+                "help": "Specify a score threshold under which the program will exit with error.",
             },
         ),
         (
@@ -343,6 +344,18 @@ def _make_linter_options(linter: PyLinter) -> Options:
             },
         ),
         (
+            "source-roots",
+            {
+                "type": "glob_paths_csv",
+                "metavar": "<path>[,<path>...]",
+                "default": (),
+                "help": "Add paths to the list of the source roots. Supports globbing patterns. "
+                "The source root is an absolute path or a path relative to the current working "
+                "directory used to determine a package namespace for modules located under the "
+                "source root.",
+            },
+        ),
+        (
             "recursive",
             {
                 "type": "yn",
@@ -388,6 +401,16 @@ def _make_linter_options(linter: PyLinter) -> Options:
                 "means that the block might have code that exists "
                 "only in one or another interpreter, leading to false "
                 "positives when analysed.",
+            },
+        ),
+        (
+            "clear-cache-post-run",
+            {
+                "default": False,
+                "type": "yn",
+                "metavar": "<y or n>",
+                "help": "Clear in-memory caches upon conclusion of linting. "
+                "Useful if running pylint in a server-like mode.",
             },
         ),
     )
