@@ -22,8 +22,12 @@ Or:
 alias git_after_fork='git remote add upstream'
 git_after_fork git@github.com:PyCQA/pylint.git
 ```
+Note `https://github.com/PyCQA/pylint` is an alias to:
++ `https://github.com/pylint-dev/pylint`
 
 To keep up with upstream (original) repo, do:
-* ``git merge upstream/master``
+* `git checkout master`
+* `git pull upstream/main`
+  + at upstream, they are using `main` as the main repo.
 * See also [github help](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork).
 
