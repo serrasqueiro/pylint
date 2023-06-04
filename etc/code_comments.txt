@@ -1,0 +1,16 @@
+h at serrasqueiro.com, 16-02-2020:
+
+Branched https://github.com/PyCQA/pylint.git .
+Created new branch: new/help_me_hm .
+
+Avoided annoying complaints about single space after/ before brackets.
+The main change was at 'format.py':
+- https://github.com/serrasqueiro/pylint/commits/new/help_me_hm/pylint/checkers/format.py
+then merged to the master of this fork:
+- https://github.com/serrasqueiro/pylint/commits/master/pylint/checkers/format.py
+
+Another way would be to check a different handler,
+	'C0326: No space allowed after bracket'
+	at format.py: ...  "C0326": ( ... )
+instead of C0326.
+

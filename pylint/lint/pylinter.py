@@ -66,6 +66,7 @@ from pylint.typing import (
     ModuleDescriptionDict,
     Options,
 )
+from pylint.prized import PDebug
 from pylint.utils import ASTWalker, FileState, LinterStats, utils
 
 MANAGER = astroid.MANAGER
@@ -820,7 +821,7 @@ class PyLinter(
         # get the module representation
         ast_node = get_ast(file.filepath, file.name)
         if ast_node is None:
-            return
+            return False
 
         self._ignore_file = False
 
@@ -838,6 +839,7 @@ class PyLinter(
         )
         for msgid, line, args in spurious_messages:
             self.add_message(msgid, line, None, args)
+        return True
 
     def _get_file_descr_from_stdin(self, filepath: str) -> Iterator[FileItem]:
         """Return file description (tuple of module name, file path, base name) from
@@ -1056,10 +1058,11 @@ class PyLinter(
             if self._ignore_file:
                 return False
             # run raw and tokens checkers
-            for raw_checker in rawcheckers:
-                raw_checker.process_module(node)
-            for token_checker in tokencheckers:
-                token_checker.process_tokens(tokens)
+            for checker in rawcheckers:
+                checker.process_module(node)
+            for checker in tokencheckers:
+                self.debug.echo("[DEBUG]", "Token checkers: ", checker.name)
+                checker.process_tokens(tokens)
         # generate events to astroid checkers
         walker.walk(node)
         return True
